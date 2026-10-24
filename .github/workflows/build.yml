@@ -27,6 +27,9 @@ jobs:
       - run: npm ci
       - run: node scripts/fetch.mjs
       - run: npm test
+      - name: verify windows tun driver and cleanup
+        if: runner.os == 'Windows'
+        run: node source/tun-smoke.mjs --privileged
       - run: npm run icons
       - name: package macos
         if: runner.os == 'macOS'
