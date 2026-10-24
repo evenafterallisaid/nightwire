@@ -19,7 +19,15 @@ export class SessionManager {
   await mkdir(this.directory,{recursive:true,mode:0o700});
   for(const name of await readdir(this.directory)){
    if(!name.startsWith('session-'))continue;const dir=join(this.directory,name);
-   try{const spec=JSON.parse(await readFile(join(dir,'session.json'),'utf8'));const state=JSON.parse(await readFile(join(dir,'status.json'),'utf8'));await fetch(`http://127.0.0.1:${state.port}/stop`,{method:'POST',headers:{authorization:'Bearer '+spec.token},signal:AbortSignal.timeout(1500)});await sleep(700);}catch{}
+   let spec,state;
+   try{spec=JSON.parse(await readFile(join(dir,'session.json'),'utf8'));state=JSON.parse(await readFile(join(dir,'status.json'),'utf8'));}catch{continue;}
+   try{await fetch(`http://127.0.0.1:${state.port}/stop`,{method:'POST',headers:{authorization:'Bearer '+spec.token},signal:AbortSignal.timeout(1500)});}catch{}
+   let stopped=false;
+   for(let n=0;n<260;n++){
+    try{state=JSON.parse(await readFile(join(dir,'status.json'),'utf8'));if(!state.running&&state.stopReason){stopped=true;break;}}catch{}
+    await sleep(100);
+   }
+   if(!stopped)throw Error('a previous tunnel has not confirmed shutdown; its recovery files were retained. wait 30 seconds and reopen nightwire');
    await rm(dir,{recursive:true,force:true}).catch(()=>{});
   }
  }
