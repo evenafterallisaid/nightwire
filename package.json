@@ -1,1 +1,17 @@
-{"name":"nightwire-build","version":"0.2.0-beta.1","private":true,"type":"module","scripts":{"test":"node --test source/*.test.mjs","icons":"node scripts/icons.mjs","build":"node scripts/package.mjs"},"devDependencies":{"@resvg/resvg-js":"2.6.2","resedit":"3.1.0"}}
+{
+  "name": "nightwire-build",
+  "version": "0.2.0-beta.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test source/*.test.mjs",
+    "icons": "node scripts/icons.mjs",
+    "build": "node scripts/package.mjs",
+    "format": "prettier --write \"source/*.{mjs,cjs,js,css,html,json}\" \"scripts/*.{mjs,json}\" \"server/*.mjs\" \"docs/*.md\" \"*.{json,md}\" \".github/workflows/*.yml\""
+  },
+  "devDependencies": {
+    "@resvg/resvg-js": "2.6.2",
+    "prettier": "3.9.10",
+    "resedit": "3.1.0"
+  }
+}

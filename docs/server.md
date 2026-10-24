@@ -14,11 +14,11 @@ the installer verifies fixed upstream sing-box and winsw hashes, installs into `
 
 in your existing cloudflare tunnel, add a published application hostname:
 
-| setting | value |
-| --- | --- |
+| setting  | value                           |
+| -------- | ------------------------------- |
 | hostname | your dedicated gateway hostname |
-| service | `http://127.0.0.1:2087` |
-| path | leave blank |
+| service  | `http://127.0.0.1:2087`         |
+| path     | leave blank                     |
 
 use a tunnel connector running on the gateway machine. keep unrelated ssh/application routes unchanged. cloudflare must allow websocket upgrades and issue a valid public certificate for the hostname. an interactive access login page in front of this hostname is incompatible with this client; authentication is the separate vless login inside the connection. an unknown websocket path or login cannot use the gateway, but the hostname is publicly reachable.
 

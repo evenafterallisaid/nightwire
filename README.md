@@ -22,6 +22,10 @@ these beta installers have no developer-id notarization or authenticode signatur
 
 **disconnect** restores normal routing. closing the app also disconnects. a missed controller heartbeat stops the worker after about 20 seconds; forced termination may take a few more seconds. disconnect and close before upgrading or uninstalling. windows uninstall keeps encrypted invites; on macos, remove the app from applications after closing it.
 
+## make it yours
+
+choose midnight, paper, or ember in the sidebar. the choice survives restarts. the traffic panel shows actual upload/download rates, cumulative session bytes, and the last 60 samples. counters describe traffic handled by the core; they exclude outer tls/websocket overhead and any traffic that never enters the tunnel. disconnect leaves the last session totals visible. the scrollbars stay narrow and follow the theme.
+
 ## what the checks actually say
 
 - web: a verified https request through the gateway reaches discord's website.
