@@ -23,7 +23,7 @@ function handle(channel,callback){ipcMain.handle(channel,async(event,...args)=>{
 });}
 function canImport(){if(manager?.session||manager?.busy)throw Error('disconnect before importing an invite');}
 async function importFile(file){canImport();const text=await readFile(file,'utf8');const id=await store.add(parseProfile(text));activeId=id;emit();return id;}
-await app.whenReady();
+app.whenReady().then(async()=>{
 store=new ProfileStore(directory,safeStorage);
 try{await store.load();}catch(e){startupError=e.message;}
 manager=new SessionManager({core:process.env.NIGHTWIRE_CORE||resolve(source,'../backend',process.platform==='win32'?'windows-amd64':'darwin-arm64',process.platform==='win32'?'sing-box.exe':'sing-box'),runtime:process.execPath,worker:join(source,'worker.mjs'),directory:join(directory,'sessions'),onChange:emit});
@@ -47,3 +47,5 @@ for(const file of [...pendingFiles,...process.argv.filter(x=>x.endsWith('.nightw
 powerMonitor.on('suspend',()=>manager.stop().catch(showError));
 app.on('window-all-closed',()=>app.quit());
 app.on('before-quit',event=>{if(quitting)return;event.preventDefault();manager.stop().catch(()=>{}).finally(()=>{quitting=true;app.quit();});});
+
+}).catch(error=>{dialog.showErrorBox('nightwire could not start',error.message);app.exit(1);});
