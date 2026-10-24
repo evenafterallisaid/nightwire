@@ -126,10 +126,12 @@ export function clientConfig(
     platform = process.platform,
     endpointIPs = [],
     settings = {},
+    ipv6 = true,
   } = {},
 ) {
   const p = normalizeProfile(value),
     preferences = normalizeSettings(settings);
+  const filterIpv6 = ipv6 === false || preferences.destinationFamily === 'ipv4';
   if (!['proxy', 'tun'].includes(mode)) throw Error('invalid connection mode.');
   if (!Number.isInteger(port) || port < 1024 || port > 65535)
     throw Error('invalid local proxy port.');
@@ -182,14 +184,24 @@ export function clientConfig(
         resolver('remote', 'proxy', preferences.dnsProvider),
       ],
       final: 'remote',
-      strategy: preferences.ipPreference === 'ipv6' ? 'prefer_ipv6' : 'prefer_ipv4',
+      ...(filterIpv6
+        ? { rules: [{ query_type: ['AAAA', 'HTTPS'], action: 'predefined', rcode: 'NOERROR' }] }
+        : {}),
+      strategy: filterIpv6
+        ? 'ipv4_only'
+        : preferences.ipPreference === 'ipv6'
+          ? 'prefer_ipv6'
+          : 'prefer_ipv4',
     },
     inbounds,
     outbounds: [proxy, { type: 'direct', tag: 'direct' }],
     route: {
       auto_detect_interface: true,
       default_domain_resolver: 'bootstrap',
-      rules: [{ inbound: ['device'], port: 53, action: 'hijack-dns' }],
+      rules: [
+        { inbound: ['device'], port: 53, action: 'hijack-dns' },
+        ...(filterIpv6 ? [{ inbound: ['device'], ip_version: 6, action: 'reject' }] : []),
+      ],
       final: 'proxy',
     },
   };

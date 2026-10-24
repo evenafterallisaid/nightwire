@@ -73,6 +73,7 @@ $('reset-settings').onclick = () =>
     stack: 'mixed',
     connectTimeout: 20,
     udpEncoding: 'xudp',
+    destinationFamily: 'auto',
   });
 const history = [];
 let lastSample = 0;
@@ -240,6 +241,8 @@ function render(next) {
       ? 'local test'
       : (state.settings?.tlsMin || '1.2') + '+'
     : '—';
+  $('detail-ip-family').textContent =
+    state.ipFamily === 'dual' ? 'ipv4 + ipv6' : state.ipFamily === 'ipv4' ? 'ipv4' : 'automatic';
   $('detail-dns').textContent = state.settings?.dnsProvider || 'cloudflare';
   $('detail-udp').textContent = state.settings?.udpEncoding || 'xudp';
   $('detail-mtu').textContent = state.settings?.mtu || 1400;

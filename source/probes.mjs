@@ -50,12 +50,16 @@ async function headers(socket) {
   }
   return result;
 }
-export async function probeWeb(port, { host = 'discord.com', timeout = 12000 } = {}) {
+export async function probeWeb(
+  port,
+  { host = 'discord.com', timeout = 12000, address = host, handshakeOnly = false } = {},
+) {
   const start = Date.now();
   let socket;
   try {
     socket = await connectSocket(port, '127.0.0.1', timeout);
-    socket.write(`CONNECT ${host}:443 HTTP/1.1\r\nHost: ${host}:443\r\n\r\n`);
+    const target = net.isIP(address) === 6 ? '[' + address + ']' : address;
+    socket.write(`CONNECT ${target}:443 HTTP/1.1\r\nHost: ${target}:443\r\n\r\n`);
     if (!/^HTTP\/1\.[01] 200\b/.test(await headers(socket)))
       throw Error('the proxy could not connect to the website');
     const raw = socket;
@@ -66,6 +70,7 @@ export async function probeWeb(port, { host = 'discord.com', timeout = 12000 } =
       socket.once('error', reject);
       socket.resume();
     });
+    if (handshakeOnly) return { ok: true, elapsedMs: Date.now() - start };
     socket.write(`HEAD / HTTP/1.1\r\nHost: ${host}\r\nConnection: close\r\n\r\n`);
     const response = await headers(socket);
     const status = Number(/^HTTP\/1\.[01] (\d{3})/.exec(response)?.[1]);
@@ -176,4 +181,13 @@ export async function diagnostics(port) {
       r.status === 'fulfilled' ? r.value : { ok: false, error: r.reason.message },
     ]),
   );
+}
+
+export function probeIpv6(port) {
+  return probeWeb(port, {
+    host: 'cloudflare-dns.com',
+    address: '2606:4700:4700::1111',
+    timeout: 5000,
+    handshakeOnly: true,
+  });
 }

@@ -92,6 +92,10 @@
                   <dd id="detail-dns">cloudflare</dd>
                 </div>
                 <div>
+                  <dt>internet stack</dt>
+                  <dd id="detail-ip-family">automatic</dd>
+                </div>
+                <div>
                   <dt>routing</dt>
                   <dd>full device</dd>
                 </div>
@@ -285,6 +289,21 @@
                   <option value="10">10 seconds</option>
                   <option value="20">20 seconds</option>
                   <option value="30">30 seconds</option>
+                </select>
+              </div>
+              <div class="settings-row">
+                <div>
+                  <label for="setting-destinationFamily">internet address families</label
+                  ><small>automatic checks the gateway's ipv6 internet access.</small>
+                </div>
+                <select
+                  id="setting-destinationFamily"
+                  data-setting="destinationFamily"
+                  data-connection
+                >
+                  <option value="auto">automatic · recommended</option>
+                  <option value="ipv4">ipv4 only</option>
+                  <option value="dual">require ipv4 + ipv6</option>
                 </select>
               </div>
               <details class="advanced-settings">

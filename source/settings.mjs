@@ -11,6 +11,7 @@ export const DEFAULT_SETTINGS = Object.freeze({
   stack: 'mixed',
   connectTimeout: 20,
   udpEncoding: 'xudp',
+  destinationFamily: 'auto',
 });
 export const CONNECTION_SETTINGS = [
   'dnsProvider',
@@ -20,6 +21,7 @@ export const CONNECTION_SETTINGS = [
   'stack',
   'connectTimeout',
   'udpEncoding',
+  'destinationFamily',
 ];
 const choices = {
   theme: ['midnight', 'paper', 'ember', 'abyss', 'moss', 'plum', 'ocean', 'rose', 'system'],
@@ -32,6 +34,7 @@ const choices = {
   stack: ['mixed', 'gvisor', 'system'],
   connectTimeout: [10, 20, 30],
   udpEncoding: ['xudp', 'packetaddr'],
+  destinationFamily: ['auto', 'ipv4', 'dual'],
 };
 export function normalizeSettings(value = {}) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw Error('invalid settings');

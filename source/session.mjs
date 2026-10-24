@@ -4,7 +4,8 @@ import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { lookup } from 'node:dns/promises';
 import { clientConfig, normalizeProfile } from './config.mjs';
-import { connectSocket, diagnostics } from './probes.mjs';
+import { normalizeSettings } from './settings.mjs';
+import { connectSocket, diagnostics, probeIpv6 } from './probes.mjs';
 import { probeDevice } from './device.mjs';
 import net from 'node:net';
 
@@ -73,7 +74,7 @@ export class SessionManager {
     if (!response.ok) throw Error('the tunnel controller refused the request');
     return response.json();
   }
-  async launch(profile, mode, settings = {}) {
+  async launch(profile, mode, settings = {}, ipv6 = true) {
     const p = normalizeProfile(profile);
     const answers = await lookup(p.server, { all: true });
     const listener = net.createServer();
@@ -101,6 +102,7 @@ export class SessionManager {
       port,
       endpointIPs: answers.map((x) => x.address),
       settings,
+      ipv6,
     });
     generated.experimental = {
       clash_api: {
@@ -244,20 +246,42 @@ export class SessionManager {
   async start(profile, { testOnly = false, settings = {} } = {}) {
     if (this.busy || this.session) throw Error('disconnect the current session first');
     this.busy = true;
-    this.update({ status: 'checking', checks: null, error: null, logs: '', traffic: null });
+    settings = normalizeSettings(settings);
+    this.update({
+      status: 'checking',
+      checks: null,
+      error: null,
+      logs: '',
+      traffic: null,
+      startedAt: null,
+      endedAt: null,
+      ipFamily: null,
+    });
     try {
       let port = await this.launch(profile, 'proxy', settings);
-      const checks = await diagnostics(port);
+      const [checks, ipv6] = await Promise.all([
+        diagnostics(port),
+        settings.destinationFamily === 'ipv4'
+          ? Promise.resolve({ ok: false, skipped: true })
+          : probeIpv6(port).catch((error) => ({ ok: false, error: error.message })),
+      ]);
+      checks.ipv6 = ipv6;
+      const useIpv6 = settings.destinationFamily !== 'ipv4' && ipv6.ok;
+      this.update({ ipFamily: useIpv6 ? 'dual' : 'ipv4' });
       this.update({ checks });
       await this.disconnect();
       if (!checks.web.ok)
         throw Error(checks.web.error || 'the home server could not reach the web');
+      if (settings.destinationFamily === 'dual' && !useIpv6)
+        throw Error(
+          'the gateway could not reach ipv6; choose automatic or ipv4-only internet addresses',
+        );
       if (testOnly) {
         this.update({ status: 'disconnected', mode: null, endedAt: Date.now() });
         return checks;
       }
       this.update({ status: 'authorizing' });
-      port = await this.launch(profile, 'tun', settings);
+      port = await this.launch(profile, 'tun', settings, useIpv6);
       this.update({ status: 'checking', mode: 'tun', startedAt: Date.now(), endedAt: null });
       const [fullChecks, device] = await Promise.all([
         diagnostics(port),
