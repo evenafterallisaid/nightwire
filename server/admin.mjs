@@ -38,8 +38,10 @@ try{
   const state=await load(),name=validName(option('name'));if(state.users.some(x=>x.name===name))throw Error('that name already exists; choose another name');state.users.push({name,uuid:randomUUID(),enabled:true,created:new Date().toISOString()});await save(state);await invite(state,name);
  }else if(command==='revoke'){
   const state=await load(),name=validName(option('name')),user=state.users.find(x=>x.name===name);if(!user)throw Error('unknown user');if(state.users.filter(x=>x.enabled!==false&&x.name!==name).length===0)throw Error('this is the last active login; stop and disable the service to close all access');user.enabled=false;user.revoked=new Date().toISOString();await save(state);console.log(JSON.stringify({name,revoked:true}));
+ }else if(command==='apply'){
+  await save(await load());console.log(JSON.stringify({applied:true}));
  }else if(command==='list'){
   const state=await load();console.log(JSON.stringify(state.users.map(({name,enabled,created,revoked})=>({name,enabled,created,revoked})),null,2));
  }else if(command==='export')await invite(await load(),validName(option('name')));
- else throw Error('usage: node server/admin.mjs init --hostname home.example --name owner | add --name friend | revoke --name friend | list | export --name owner');
+ else throw Error('usage: node server/admin.mjs init --hostname home.example --name owner | add --name friend | revoke --name friend | list | apply | export --name owner');
 }catch(e){console.error(e.message);process.exitCode=1;}

@@ -1,0 +1,70 @@
+name: build clients
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  clients:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            target: darwin
+          - os: windows-latest
+            target: win32
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: node scripts/fetch.mjs
+      - run: npm test
+      - run: npm run icons
+      - name: package macos
+        if: runner.os == 'macOS'
+        env:
+          NIGHTWIRE_ELECTRON_RUNTIME: ${{ github.workspace }}/.cache/runtime-darwin/Electron.app
+        run: |
+          npm run build -- darwin
+          codesign --verify --deep --strict dist/nightwire.app
+          pkgutil --payload-files dist/nightwire-*-macos-arm64.pkg > /dev/null
+      - name: package windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $env:NIGHTWIRE_ELECTRON_RUNTIME="$PWD\.cache\runtime-win32"
+          $env:NIGHTWIRE_MAKENSIS="C:\Program Files (x86)\NSIS\makensis.exe"
+          if (!(Test-Path $env:NIGHTWIRE_MAKENSIS)) { choco install nsis --no-progress -y }
+          npm run build -- win32
+          if ($LASTEXITCODE -ne 0) { throw 'packaging failed' }
+      - name: smoke-test windows installer
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $installer=(Get-ChildItem dist\*-setup.exe | Select-Object -First 1).FullName
+          $p=Start-Process $installer -ArgumentList '/S' -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw 'install failed' }
+          $installed="$env:LOCALAPPDATA\Programs\nightwire"
+          if (!(Test-Path "$installed\nightwire.exe")) { throw 'installed executable missing' }
+          $entry=Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\nightwire'
+          if ($entry.UninstallString -ne ('"'+$installed+'\uninstall.exe"')) { throw 'uninstall registration is invalid' }
+          $env:ELECTRON_RUN_AS_NODE='1'
+          & "$installed\nightwire.exe" -e 'console.log(process.versions.electron)'
+          if ($LASTEXITCODE -ne 0) { throw 'installed runtime failed' }
+          Remove-Item Env:ELECTRON_RUN_AS_NODE
+          Start-Process "$installed\uninstall.exe" -ArgumentList '/S' -Wait
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: installer-${{ matrix.target }}
+          path: |
+            dist/*.pkg
+            dist/*-setup.exe
+          if-no-files-found: error
