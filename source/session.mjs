@@ -48,7 +48,7 @@ export class SessionManager {
   const child=spawn(command,args,{env,stdio:['ignore','ignore','pipe'],windowsHide:true});this.session.child=child;
   let launchError='';child.stderr.on('data',d=>launchError=(launchError+d.toString()).slice(-3000));child.on('error',e=>launchError=e.message);
   for(let i=0;i<180;i++){
-   try{const s=JSON.parse(await readFile(statusFile,'utf8'));this.session.port=s.port;if(s.error)throw Object.assign(Error(s.error),{workerFailed:true});if(s.running){this.session.heartbeat=setInterval(()=>this.maintain(),3000);for(let n=0;n<40;n++){try{(await connectSocket(port,'127.0.0.1',500)).destroy();return port;}catch{await sleep(150);}}throw Error('the tunnel did not open its local listener');}}
+   try{const s=JSON.parse(await readFile(statusFile,'utf8'));this.session.port=s.port;if(s.error)throw Object.assign(Error(s.error),{workerFailed:true});if(s.running){this.session.heartbeat=setInterval(()=>this.maintain(),3000);for(let n=0;n<40;n++){try{(await connectSocket(port,'127.0.0.1',500)).destroy();return port;}catch{await sleep(150);}}throw Object.assign(Error('the tunnel did not open its local listener'),{workerFailed:true});}}
    catch(e){if(e.workerFailed)throw e;}
    if(child.exitCode!==null)throw Error(launchError.trim()||'administrator access was cancelled or the tunnel could not start');await sleep(500);
   }
@@ -62,8 +62,15 @@ export class SessionManager {
  async disconnect(){
   const s=this.session;if(!s)return;clearInterval(s.heartbeat);
   try{await this.request('/stop','POST');}catch{}
-  for(let i=0;i<65;i++){try{const state=JSON.parse(await readFile(join(s.dir,'status.json'),'utf8'));if(!state.running)break;}catch{break;}await sleep(100);}
-  this.session=null;await rm(s.dir,{recursive:true,force:true}).catch(()=>{});
+  if(!s.port&&s.child?.exitCode===null)s.child.kill('SIGTERM');
+  let stopped=false;
+  for(let i=0;i<260;i++){
+   try{const state=JSON.parse(await readFile(join(s.dir,'status.json'),'utf8'));if(!state.running){stopped=true;break;}}
+   catch{if(!s.child||s.child.exitCode!==null){stopped=true;break;}}
+   await sleep(100);
+  }
+  if(!stopped)throw Error('the tunnel has not confirmed shutdown; session recovery files were retained');
+  await sleep(200);this.session=null;await rm(s.dir,{recursive:true,force:true}).catch(()=>{});
  }
  async stop(){if(this.busy)return;this.busy=true;this.update({status:'disconnecting'});try{await this.disconnect();this.update({status:'disconnected',mode:null});}finally{this.busy=false;this.onChange();}}
  async start(profile,{testOnly=false}={}){
