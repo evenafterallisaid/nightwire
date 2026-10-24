@@ -36,15 +36,15 @@ function resolver(tag,detour){return {type:'https',tag,server:'1.1.1.1',path:'/d
 export function clientConfig(value,{mode='proxy',port=10808,platform=process.platform,endpointIPs=[]}={}){
  const p=normalizeProfile(value);if(!['proxy','tun'].includes(mode))throw Error('Invalid connection mode.');
  if(!Number.isInteger(port)||port<1024||port>65535)throw Error('Invalid local proxy port.');
- const proxy={type:'vless',tag:'proxy',server:p.server,server_port:p.port,uuid:p.uuid,packet_encoding:'xudp',...(p.tls?{tls:{enabled:true,server_name:p.serverName}}:{}),...(p.transport==='ws'?{transport:{type:'ws',path:p.path,headers:{Host:p.serverName}}}:{}),domain_resolver:'bootstrap'};
+ const proxy={type:'vless',tag:'proxy',server:endpointIPs.find(ip=>isIP(ip)===4)||endpointIPs[0]||p.server,server_port:p.port,uuid:p.uuid,packet_encoding:'xudp',...(p.tls?{tls:{enabled:true,server_name:p.serverName}}:{}),...(p.transport==='ws'?{transport:{type:'ws',path:p.path,headers:{Host:p.serverName}}}:{}),domain_resolver:'bootstrap'};
  const inbound={type:'mixed',tag:'local',listen:'127.0.0.1',listen_port:port};
  const inbounds=[inbound];
  if(mode==='tun'){
   if(!['darwin','win32','linux'].includes(platform))throw Error('Full-device routing is unsupported on this system.');
   if(!endpointIPs.length||endpointIPs.some(ip=>!isIP(ip)))throw Error('Resolve the server before enabling full-device routing.');
-  inbounds.push({type:'tun',tag:'device',interface_name:platform==='darwin'?'utun188':'nightwire',address:['172.29.255.1/30','fdfe:dcba:9876::1/126'],mtu:1400,auto_route:true,strict_route:true,dns_mode:'hijack',stack:'mixed',route_exclude_address:endpointIPs.map(ip=>`${ip}/${isIP(ip)===6?128:32}`)});
+  inbounds.push({type:'tun',tag:'device',interface_name:platform==='darwin'?'utun188':'nightwire',address:['172.29.255.1/30','fdfe:dcba:9876::1/126'],mtu:1400,auto_route:true,strict_route:true,dns_mode:'hijack',stack:'mixed'});
  }
- return {log:{level:'warn',timestamp:true},dns:{servers:[resolver('bootstrap'),resolver('remote','proxy')],final:'remote',strategy:'prefer_ipv4'},inbounds,outbounds:[proxy,{type:'direct',tag:'direct'}],route:{auto_detect_interface:true,default_domain_resolver:'bootstrap',rules:[{port:53,action:'hijack-dns'}],final:'proxy'}};
+ return {log:{level:'warn',timestamp:true},dns:{servers:[{type:'local',tag:'bootstrap'},resolver('remote','proxy')],final:'remote',strategy:'prefer_ipv4'},inbounds,outbounds:[proxy,{type:'direct',tag:'direct'}],route:{auto_detect_interface:true,default_domain_resolver:'bootstrap',rules:[{port:53,action:'hijack-dns'}],final:'proxy'}};
 }
 export function serverConfig(users,{port=2087,path='/nightwire'}={}){
  if(!Array.isArray(users)||!users.length)throw Error('At least one user is required.');

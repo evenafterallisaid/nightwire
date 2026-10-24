@@ -21,14 +21,15 @@ function handle(channel,callback){ipcMain.handle(channel,async(event,...args)=>{
  if(!window||event.sender!==window.webContents||event.senderFrame!==window.webContents.mainFrame)return {ok:false,error:'untrusted request'};
  try{return {ok:true,result:await callback(...args)};}catch(e){return {ok:false,error:String(e.message).replace(/vless:\/\/\S+/gi,'[invite]').replace(/[0-9a-f]{8}-[0-9a-f-]{27}/gi,'[login]')};}
 });}
-async function importFile(file){const text=await readFile(file,'utf8');const id=await store.add(parseProfile(text));activeId=id;emit();return id;}
+function canImport(){if(manager?.session||manager?.busy)throw Error('disconnect before importing an invite');}
+async function importFile(file){canImport();const text=await readFile(file,'utf8');const id=await store.add(parseProfile(text));activeId=id;emit();return id;}
 await app.whenReady();
 store=new ProfileStore(directory,safeStorage);
 try{await store.load();}catch(e){startupError=e.message;}
 manager=new SessionManager({core:process.env.NIGHTWIRE_CORE||resolve(source,'../backend',process.platform==='win32'?'windows-amd64':'darwin-arm64',process.platform==='win32'?'sing-box.exe':'sing-box'),runtime:process.execPath,worker:join(source,'worker.mjs'),directory:join(directory,'sessions'),onChange:emit});
 await manager.cleanupPrevious();activeId=store.list()[0]?.id||null;
 handle('state',state);
-handle('import-text',async text=>{const id=await store.add(parseProfile(text));activeId=id;emit();return state();});
+handle('import-text',async text=>{canImport();const id=await store.add(parseProfile(text));activeId=id;emit();return state();});
 handle('import-file',async()=>{const choice=await dialog.showOpenDialog(window,{properties:['openFile'],filters:[{name:'nightwire invites',extensions:['nightwire','json','txt']}]});if(!choice.canceled)await importFile(choice.filePaths[0]);return state();});
 handle('select',id=>{store.get(id);if(manager.session||manager.busy)throw Error('disconnect before switching invites');activeId=id;emit();return state();});
 handle('remove',async id=>{if(manager.session||manager.busy)throw Error('disconnect before removing an invite');store.get(id);await store.remove(id);if(activeId===id)activeId=store.list()[0]?.id||null;emit();return state();});

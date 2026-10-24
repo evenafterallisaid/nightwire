@@ -11,7 +11,7 @@ function render(next){
  $('headline').style.whiteSpace='pre-line';
  $('description').textContent=({connected:'this device’s traffic is going through your home server.',limited:'the web check passed, but the udp check failed. voice and games may need attention.',checking:'checking the server before calling this a connection.',authorizing:'approve your operating system’s administrator prompt to enable system-wide routing.',disconnecting:'stopping the tunnel and releasing its routes.',failed:'check the message above, then try the connection test.'})[state.status]||(profile?'ready when you are. connect to route this entire device through '+profile.server+'.':'add your invite to send this device’s traffic through your home server.');
  $('connect').textContent=connected?'disconnect':busy?'working…':'connect';$('connect').disabled=busy||!profile;
- $('test').disabled=busy||connected||!profile;$('export').disabled=busy||!profile;$('remove').disabled=busy||connected||!profile;
+ $('test').disabled=busy||connected||!profile;$('export').disabled=busy||!profile;$('remove').disabled=busy||connected||!profile;$('add-invite').disabled=busy||connected;$('import-file').disabled=busy||connected;
  $('routing-note').textContent=connected?'closing nightwire disconnects. your normal connection returns.':'system-wide routing includes web, voice, and game traffic.';
  $('profiles').replaceChildren();
  if(!state.profiles.length){const p=document.createElement('p');p.className='profile-empty';p.textContent='no invites yet. add one to get the packets moving.';$('profiles').append(p);}
