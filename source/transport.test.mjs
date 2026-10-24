@@ -1,6 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {spawn} from 'node:child_process';import {createServer} from 'node:http';import net from 'node:net';import dgram from 'node:dgram';import {mkdtemp,writeFile,rm} from 'node:fs/promises';import {tmpdir} from 'node:os';import {join,resolve} from 'node:path';import {randomUUID} from 'node:crypto';
 import {clientConfig,serverConfig} from './config.mjs';import {connectSocket,udpExchange} from './probes.mjs';
-const binary=process.env.SING_BOX||resolve(import.meta.dirname,'../backend/darwin-arm64/sing-box');
+const binary=process.env.SING_BOX||(process.env.SING_BOX||resolve(import.meta.dirname,'../backend',process.platform==='win32'?'windows-amd64':'darwin-arm64',process.platform==='win32'?'sing-box.exe':'sing-box'));
 async function freePort(){const s=net.createServer();await new Promise(r=>s.listen(0,'127.0.0.1',r));const p=s.address().port;await new Promise(r=>s.close(r));return p;}
 async function run(config,dir,name){const file=join(dir,name+'.json');await writeFile(file,JSON.stringify(config),{mode:0o600});const c=spawn(binary,['run','-c',file],{stdio:['ignore','ignore','pipe']});let err='';c.stderr.on('data',x=>err+=x);c.logs=()=>name+': '+err;c.on('error',()=>{});await new Promise(r=>setTimeout(r,180));if(c.exitCode!==null)throw Error(err);return c;}
 async function stop(c){if(!c||c.exitCode!==null)return;await new Promise(resolve=>{const timer=setTimeout(()=>c.kill('SIGKILL'),2500);c.once('exit',()=>{clearTimeout(timer);resolve();});c.kill('SIGTERM');});}

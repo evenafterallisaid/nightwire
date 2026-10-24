@@ -1,1 +1,1 @@
-{"name":"nightwire","version":"0.2.0","private":true,"type":"module","main":"main.mjs","scripts":{"test":"node --test *.test.mjs"}}
+{"name":"nightwire","version":"0.2.0-beta.1","private":true,"type":"module","main":"main.mjs","scripts":{"test":"node --test *.test.mjs"}}

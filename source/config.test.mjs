@@ -1,6 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {randomUUID} from 'node:crypto';
 import {normalizeProfile,parseProfile,shareLink,clientConfig,serverConfig,PRIVATE_NETS} from './config.mjs';
-const p={name:'Clyde / Home',server:'link.purl.lol',uuid:randomUUID(),transport:'ws',path:'/netmod-link-test'};
+const p={name:'Clyde / Home',server:'home.example',uuid:randomUUID(),transport:'ws',path:'/netmod-link-test'};
 test('share links preserve login and transport',()=>assert.deepEqual(parseProfile(shareLink(p)),normalizeProfile(p)));
 test('IPv6 share links round trip',()=>{const v={...p,server:'2001:db8::1'};assert.deepEqual(parseProfile(shareLink(v)),normalizeProfile(v));});
 test('public profiles require TLS and verified certificates',()=>{assert.throws(()=>normalizeProfile({...p,tls:false}));const u=new URL(shareLink(p));u.searchParams.set('allowInsecure','1');assert.throws(()=>parseProfile(u.toString()));assert.throws(()=>parseProfile(`vless://${p.uuid}@test.example:443?allowInsecure=1`));});

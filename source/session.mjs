@@ -5,6 +5,7 @@ import {randomBytes} from 'node:crypto';
 import {lookup} from 'node:dns/promises';
 import {clientConfig,normalizeProfile} from './config.mjs';
 import {connectSocket,diagnostics} from './probes.mjs';
+import {probeDevice} from './device.mjs';
 import net from 'node:net';
 
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -80,7 +81,10 @@ export class SessionManager {
    if(!checks.web.ok)throw Error(checks.web.error||'the home server could not reach the web');
    if(testOnly){this.update({status:'disconnected',mode:null});return checks;}
    this.update({status:'authorizing'});port=await this.launch(profile,'tun');this.update({status:'checking',mode:'tun'});
-   const fullChecks=await diagnostics(port);if(!fullChecks.web.ok)throw Error(fullChecks.web.error||'the tunnel failed after changing routes');
+   const [fullChecks,device]=await Promise.all([diagnostics(port),probeDevice().then(value=>value,error=>({ok:false,error:error.message}))]);fullChecks.device=device;
+   this.update({checks:fullChecks});
+   if(!device.ok)throw Error(device.error);
+   if(!fullChecks.web.ok)throw Error(fullChecks.web.error||'the tunnel failed after changing routes');
    this.update({status:fullChecks.udp.ok?'connected':'limited',mode:'tun',checks:fullChecks});return fullChecks;
   }catch(e){await this.disconnect();this.update({status:'failed',mode:null,error:e.message});throw e;}
   finally{this.busy=false;this.onChange();}

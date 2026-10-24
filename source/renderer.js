@@ -16,7 +16,7 @@ function render(next){
  $('profiles').replaceChildren();
  if(!state.profiles.length){const p=document.createElement('p');p.className='profile-empty';p.textContent='no invites yet. add one to get the packets moving.';$('profiles').append(p);}
  for(const p of state.profiles){const button=document.createElement('button');button.className='profile-option'+(p.id===state.activeId?' selected':'');button.disabled=busy||connected;const name=document.createElement('strong'),server=document.createElement('small');name.textContent=p.name;server.textContent=p.server;button.append(name,server);button.onclick=()=>request('select',p.id);$('profiles').append(button);}
- for(const type of ['web','udp']){const check=state.checks?.[type];$(type+'-dot').className='check-dot'+(check?(check.ok?' pass':' fail'):'');$(type+'-result').textContent=check?(check.ok?'verified · '+check.elapsedMs+' ms':'failed'):'not checked';$(type+'-result').title=check?.error||'';}
+ for(const type of ['web','udp','device']){const check=state.checks?.[type];$(type+'-dot').className='check-dot'+(check?(check.ok?' pass':' fail'):'');$(type+'-result').textContent=check?(check.ok?'verified · '+check.elapsedMs+' ms':'failed'):'not checked';$(type+'-result').title=check?.error||'';}
  $('check-context').textContent=state.checks?'latest transport check':'no checks yet';$('log-content').textContent=state.logs||'nothing brewing yet.';
  error(state.error||state.startupError||'');
 }

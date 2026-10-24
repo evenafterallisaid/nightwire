@@ -11,7 +11,7 @@ if(process.env.NIGHTWIRE_DATA_DIR)app.setPath('userData',resolve(process.env.NIG
 const directory=app.getPath('userData');
 let window,manager,store,quitting=false,activeId=null,startupError=null;
 const pendingFiles=[];
-if(!app.requestSingleInstanceLock())app.quit();
+if(!app.requestSingleInstanceLock())app.exit(0);
 app.on('second-instance',(_event,argv)=>{const file=argv.find(x=>x.endsWith('.nightwire'));if(file)importFile(file).catch(showError);window?.show();window?.focus();});
 app.on('open-file',(event,file)=>{event.preventDefault();if(store)importFile(file).catch(showError);else pendingFiles.push(file);});
 function showError(error){startupError=error.message;emit();}
