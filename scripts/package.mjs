@@ -11,7 +11,7 @@ function resources(destination,platform){
  mkdirSync(join(destination,'app'),{recursive:true});cpSync(join(root,'source'),join(destination,'app'),{recursive:true,filter:p=>!p.endsWith('.test.mjs')&&!p.endsWith('tun-smoke.mjs')&&!p.includes('.iconset')});
  const meta=JSON.parse(readFileSync(join(destination,'app/package.json')));meta.version=version;writeFileSync(join(destination,'app/package.json'),JSON.stringify(meta,null,2));
  mkdirSync(join(destination,'backend'),{recursive:true});cpSync(join(root,'backend',platform),join(destination,'backend',platform),{recursive:true});
- for(const name of ['LICENSE','third-party.md','licenses'])if(existsSync(join(root,name)))cpSync(join(root,name),join(destination,'app',name));
+ for(const name of ['LICENSE','third-party.md','licenses'])if(existsSync(join(root,name)))cpSync(join(root,name),join(destination,'app',name),{recursive:true});
 }
 if(target==='darwin'){
  const app=join(dist,'nightwire.app');if(existsSync(app))throw Error('the macos build directory already exists; choose a clean dist directory');run('/usr/bin/ditto',[resolve(runtime),app]);

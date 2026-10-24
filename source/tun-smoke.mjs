@@ -14,7 +14,7 @@ const core=process.env.SING_BOX||resolve(import.meta.dirname,'../backend',proces
 const listener=net.createServer();await new Promise(r=>listener.listen(0,'127.0.0.1',r));const port=listener.address().port;await new Promise(r=>listener.close(r));
 const config=clientConfig({server:'127.0.0.1',port:2087,uuid:randomUUID(),tls:false},{mode:'tun',port,endpointIPs:['127.0.0.1']});
 // exercise the real driver and routes with direct egress, without a remote account.
-config.outbounds=[{type:'direct',tag:'proxy'}];
+config.outbounds=[{type:'direct',tag:'proxy'}];delete config.dns.servers[1].detour;
 const file=join(dir,'config.json'),statusFile=join(dir,'status.json'),manifest=join(dir,'session.json');
 await writeFile(file,JSON.stringify(config),{mode:0o600});await writeFile(manifest,JSON.stringify({version:1,core,config:file,statusFile,token,leaseMs:8000}),{mode:0o600});
 const child=spawn(process.execPath,[resolve(import.meta.dirname,'worker.mjs'),manifest],{stdio:'inherit',env:{...process.env,ELECTRON_RUN_AS_NODE:'1'}});
@@ -30,7 +30,7 @@ try{
  await new Promise((resolve,reject)=>{if(child.exitCode!==null)return resolve();const timer=setTimeout(()=>reject(Error('worker shutdown timed out')),15000);child.once('exit',()=>{clearTimeout(timer);resolve();});});
  const after=JSON.parse(await readFile(statusFile,'utf8'));assert.equal(after.running,false);
  if(process.platform==='win32'){
-  const routes=execFileSync('powershell.exe',['-NoProfile','-NonInteractive','-Command',"Get-NetRoute -InterfaceAlias nightwire -ErrorAction SilentlyContinue | Where-Object { $_.DestinationPrefix -in @('0.0.0.0/1','128.0.0.0/1','::/1','8000::/1','0.0.0.0/0','::/0') } | Measure-Object | Select-Object -ExpandProperty Count"],{encoding:'utf8'});assert.equal(Number(routes.trim()),0);
+  const routes=execFileSync('powershell.exe',['-NoProfile','-NonInteractive','-Command',"Get-NetRoute -InterfaceAlias nightwire -ErrorAction SilentlyContinue | Where-Object { $_.DestinationPrefix -in @('0.0.0.0/1','128.0.0.0/1','::/1','8000::/1','0.0.0.0/0','::/0') } | Measure-Object | Select-Object -ExpandProperty Count; exit 0"],{encoding:'utf8'});assert.equal(Number(routes.trim()),0);
  }else assert.throws(()=>execFileSync('/sbin/ifconfig',['utun188'],{stdio:'ignore'}));
  await rm(dir,{recursive:true,force:true});console.log('worker stopped and tunnel routes removed');
 }
