@@ -270,6 +270,7 @@ export class SessionManager {
       this.update({ ipFamily: useIpv6 ? 'dual' : 'ipv4' });
       this.update({ checks });
       await this.disconnect();
+      if (checks.web.ok && checks.udp.ok) this.update({ logs: '' });
       if (!checks.web.ok)
         throw Error(checks.web.error || 'the home server could not reach the web');
       if (settings.destinationFamily === 'dual' && !useIpv6)

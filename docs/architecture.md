@@ -10,6 +10,8 @@ app ui → isolated preload → desktop controller
                                        localhost windows gateway → internet
 ```
 
+before enabling routes, the controller checks actual ipv6 egress using a verified tls connection to a public ipv6 literal. when that fails, it captures ipv6 locally and suppresses aaaa and https dns answers that could send browsers toward unreachable destinations. the distinction matters: a tun interface can accept an ipv6 tcp handshake even when the gateway cannot carry its tls stream onward.
+
 the desktop controller resolves the endpoint before installing routes and pins its address while preserving certificate and websocket host verification. sing-box binds its own outer connections to the physical interface. shared cloudflare edge addresses are not globally excluded from routing, because that would let unrelated sites on those addresses bypass the tunnel.
 
 the ui stays unprivileged. only the small worker and core are elevated after the native administrator prompt. the worker validates the config, serves authenticated local control, keeps bounded logs, and stops the core when heartbeats disappear. macos uses a termination signal. windows requests a console control event before a bounded forced-stop fallback. a normal core shutdown removes its routes and tun interface.

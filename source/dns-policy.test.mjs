@@ -100,7 +100,9 @@ test(
         assert.ok(answer[2] & 128);
       }
     } finally {
-      udp.close();
+      try {
+        udp.close();
+      } catch {}
       if (child && child.exitCode === null) {
         child.kill();
         await new Promise((r) => child.once('exit', r));
