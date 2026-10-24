@@ -9,7 +9,7 @@ function hostname(value){
 }
 export function normalizeProfile(value){
  if(!value||typeof value!=='object'||Array.isArray(value))throw Error('Invalid profile.');
- const p={version:1,name:String(value.name||'Home connection').slice(0,100),server:hostname(value.server),port:Number(value.port??443),uuid:value.uuid,transport:value.transport??'ws',tls:value.tls!==false,serverName:hostname(value.serverName||value.server),path:value.path??'/netmod-link'};
+ const p={version:1,name:String(value.name||'Home connection').slice(0,100),server:hostname(value.server),port:Number(value.port??443),uuid:value.uuid,transport:value.transport??'ws',tls:value.tls!==false,serverName:hostname(value.serverName||value.server),path:value.path??'/nightwire'};
  if(!Number.isInteger(p.port)||p.port<1||p.port>65535)throw Error('Invalid server port.');
  if(typeof p.uuid!=='string'||!UUID.test(p.uuid))throw Error('Invalid VLESS login ID.');
  if(!['ws','tcp'].includes(p.transport))throw Error('Only WebSocket and TCP profiles are supported.');
@@ -20,11 +20,11 @@ export function normalizeProfile(value){
 export function parseProfile(text){
  if(typeof text!=='string'||text.length>65536)throw Error('Profile must be smaller than 64 KB.');
  text=text.trim();if(text.startsWith('{'))return normalizeProfile(JSON.parse(text));
- const u=new URL(text);if(u.protocol!=='vless:')throw Error('Import a VLESS link or NetMod Link JSON profile.');
+ const u=new URL(text);if(u.protocol!=='vless:')throw Error('Import a VLESS link or nightwire JSON profile.');
  if(u.searchParams.get('security')==='reality'||u.searchParams.get('flow'))throw Error('This release supports TLS WebSocket or TCP profiles, without REALITY/Vision.');
  if(u.searchParams.get('allowInsecure')==='1'||u.searchParams.get('insecure')==='1')throw Error('Profiles that disable certificate verification are not accepted.');
  const encryption=u.searchParams.get('encryption');if(encryption&&encryption!=='none')throw Error('Unsupported VLESS encryption mode.');
- return normalizeProfile({name:decodeURIComponent(u.hash.slice(1))||u.hostname,server:u.hostname.replace(/^\[|\]$/g,''),port:u.port||443,uuid:decodeURIComponent(u.username),transport:u.searchParams.get('type')||'tcp',tls:u.searchParams.get('security')!=='none',serverName:u.searchParams.get('sni')||u.hostname.replace(/^\[|\]$/g,''),path:u.searchParams.get('path')||'/netmod-link'});
+ return normalizeProfile({name:decodeURIComponent(u.hash.slice(1))||u.hostname,server:u.hostname.replace(/^\[|\]$/g,''),port:u.port||443,uuid:decodeURIComponent(u.username),transport:u.searchParams.get('type')||'tcp',tls:u.searchParams.get('security')!=='none',serverName:u.searchParams.get('sni')||u.hostname.replace(/^\[|\]$/g,''),path:u.searchParams.get('path')||'/nightwire'});
 }
 export function shareLink(value){
  const p=normalizeProfile(value);const host=isIP(p.server)===6?`[${p.server}]`:p.server;
@@ -42,11 +42,11 @@ export function clientConfig(value,{mode='proxy',port=10808,platform=process.pla
  if(mode==='tun'){
   if(!['darwin','win32','linux'].includes(platform))throw Error('Full-device routing is unsupported on this system.');
   if(!endpointIPs.length||endpointIPs.some(ip=>!isIP(ip)))throw Error('Resolve the server before enabling full-device routing.');
-  inbounds.push({type:'tun',tag:'device',interface_name:platform==='darwin'?'utun188':'NetModLink',address:['172.29.255.1/30','fdfe:dcba:9876::1/126'],mtu:1400,auto_route:true,strict_route:true,dns_mode:'hijack',stack:'mixed',route_exclude_address:endpointIPs.map(ip=>`${ip}/${isIP(ip)===6?128:32}`)});
+  inbounds.push({type:'tun',tag:'device',interface_name:platform==='darwin'?'utun188':'nightwire',address:['172.29.255.1/30','fdfe:dcba:9876::1/126'],mtu:1400,auto_route:true,strict_route:true,dns_mode:'hijack',stack:'mixed',route_exclude_address:endpointIPs.map(ip=>`${ip}/${isIP(ip)===6?128:32}`)});
  }
  return {log:{level:'warn',timestamp:true},dns:{servers:[resolver('bootstrap'),resolver('remote','proxy')],final:'remote',strategy:'prefer_ipv4'},inbounds,outbounds:[proxy,{type:'direct',tag:'direct'}],route:{auto_detect_interface:true,default_domain_resolver:'bootstrap',rules:[{port:53,action:'hijack-dns'}],final:'proxy'}};
 }
-export function serverConfig(users,{port=2087,path='/netmod-link'}={}){
+export function serverConfig(users,{port=2087,path='/nightwire'}={}){
  if(!Array.isArray(users)||!users.length)throw Error('At least one user is required.');
  const names=new Set(),ids=new Set();
  const accounts=users.filter(u=>u.enabled!==false).map(u=>{
