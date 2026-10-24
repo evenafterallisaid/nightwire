@@ -1,0 +1,6 @@
+backend/
+private/
+*.app/
+dist/
+node_modules/
+*.log
