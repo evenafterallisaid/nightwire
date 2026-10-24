@@ -1,8 +1,8 @@
 # where the secrets sleep
 
-nightwire has no analytics, telemetry endpoint, subscription backend, or automatic update request. explicit connection checks contact discord.com, example.com, and cloudflare's public dns service. the gateway also uses cloudflare's public dns-over-https resolver.
+nightwire has no analytics, telemetry endpoint, subscription backend, or automatic update request. explicit connection checks contact discord.com, example.com, and cloudflare's public dns service. the gateway also uses cloudflare's public dns-over-https resolver. desktop dns can be changed to quad9 or google in settings; their services then receive intercepted dns queries.
 
-the theme choice stays in local storage. live traffic totals stay in memory; a protected local core api supplies only counters to the window. the interface does not display the core api's connection list or destination metadata.
+appearance and connection preferences stay in a local settings file; a legacy theme choice may also remain in local storage. live traffic totals stay in memory; a protected local core api supplies only counters to the window. the interface does not display the core api's connection list or destination metadata.
 
 saved invites are encrypted with electron safestorage: the macos keychain or windows account's data protection. they stay in the application's user-data directory. encryption protects storage, not an already compromised account. exporting an invite deliberately creates a plaintext credential file.
 

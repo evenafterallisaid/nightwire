@@ -24,7 +24,9 @@ these beta installers have no developer-id notarization or authenticode signatur
 
 ## make it yours
 
-choose midnight, paper, or ember in the sidebar. the choice survives restarts. the traffic panel shows actual upload/download rates, cumulative session bytes, and the last 60 samples. counters describe traffic handled by the core; they exclude outer tls/websocket overhead and any traffic that never enters the tunnel. disconnect leaves the last session totals visible. the scrollbars stay narrow and follow the theme.
+the desktop workspace has connection, traffic, and settings views, native window controls, and eight themes plus system appearance. the graph has readable rate/time axes and sample inspection. choose a 30-second, 1-minute, or 5-minute window, and bytes or bits per second. rates and session totals come from actual tunnel counters. narrow scrollbars follow the theme.
+
+[settings explained](docs/settings.md) covers verified tls requirements, encrypted dns providers, address selection, timeouts, mtu, network stacks, and udp compatibility. connection changes apply on the next connection. there is a reset-defaults button for the experiments that needed less coffee.
 
 ## what the checks actually say
 

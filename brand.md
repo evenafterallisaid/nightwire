@@ -11,3 +11,7 @@ the palette is midnight blue `#152a3a`, darker blue `#102131`, mist `#edf2ff`, p
 the desktop app uses avenir next on macos and segoe ui on windows. the layout puts saved connections on the left, the current state in the center, and real connection checks underneath. the log stays folded until somebody needs it. remarkably, that somebody is usually us.
 
 all original documentation and comments stay lowercase. errors still say what happened. being tired is a brand direction, not an excuse to tell someone their vpn is fine when it is on fire.
+
+## desktop rhythm
+
+use a compact navigation rail, native window controls, grouped connection details, and a dedicated monitor pane. status and measurements earn the space. keep type between 10 and 25 pixels for everyday controls; settings belong in their own workspace. extra themes inherit the same spacing and contrast roles.
