@@ -31,6 +31,7 @@ export class ProfileStore {
       server: p.server,
       port: p.port,
       transport: p.transport,
+      tls: p.tls,
     }));
   }
   get(id) {

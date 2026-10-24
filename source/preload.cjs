@@ -1,6 +1,7 @@
 const { contextBridge, ipcRenderer } = require('electron');
 const channels = new Set([
   'state',
+  'settings',
   'import-text',
   'import-file',
   'select',

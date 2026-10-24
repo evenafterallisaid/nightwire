@@ -21,6 +21,7 @@ Copy-Item -Force $exe.FullName "$Root\bin\sing-box.exe"
 Get-ChildItem $extract -Recurse -Filter LICENSE | Select-Object -First 1 | ForEach-Object {Copy-Item -Force $_.FullName "$Root\bin\sing-box-license.txt"}
 Fetch-Verified 'https://github.com/winsw/winsw/releases/download/v2.12.0/WinSW.NET461.exe' "$Root\nightwire-service.exe" 'b5066b7bbdfba1293e5d15cda3caaea88fbeab35bd5b38c41c913d492aadfc4f'
 Copy-Item -Force "$sourceRoot\server\admin.mjs" "$Root\server\admin.mjs"
+Copy-Item -Force "$sourceRoot\source\settings.mjs" "$Root\source\settings.mjs"
 Copy-Item -Force "$sourceRoot\source\config.mjs" "$Root\source\config.mjs"
 @'
 <service>

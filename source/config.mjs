@@ -1,4 +1,5 @@
 import { isIP } from 'node:net';
+import { normalizeSettings } from './settings.mjs';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const PRIVATE_NETS = [
@@ -102,21 +103,33 @@ export function shareLink(value) {
   u.hash = p.name;
   return u.toString();
 }
-function resolver(tag, detour) {
+function resolver(tag, detour, provider = 'cloudflare') {
+  const [address, serverName] = {
+    cloudflare: ['1.1.1.1', 'cloudflare-dns.com'],
+    quad9: ['9.9.9.9', 'dns.quad9.net'],
+    google: ['8.8.8.8', 'dns.google'],
+  }[provider];
   return {
     type: 'https',
     tag,
-    server: '1.1.1.1',
+    server: address,
     path: '/dns-query',
-    tls: { enabled: true, server_name: 'cloudflare-dns.com' },
+    tls: { enabled: true, server_name: serverName },
     ...(detour ? { detour } : {}),
   };
 }
 export function clientConfig(
   value,
-  { mode = 'proxy', port = 10808, platform = process.platform, endpointIPs = [] } = {},
+  {
+    mode = 'proxy',
+    port = 10808,
+    platform = process.platform,
+    endpointIPs = [],
+    settings = {},
+  } = {},
 ) {
-  const p = normalizeProfile(value);
+  const p = normalizeProfile(value),
+    preferences = normalizeSettings(settings);
   if (!['proxy', 'tun'].includes(mode)) throw Error('invalid connection mode.');
   if (!Number.isInteger(port) || port < 1024 || port > 65535)
     throw Error('invalid local proxy port.');
@@ -124,11 +137,19 @@ export function clientConfig(
   const proxy = {
     type: 'vless',
     tag: 'proxy',
-    server: endpointIPs.find((ip) => isIP(ip) === 4) || endpointIPs[0] || p.server,
+    server:
+      (preferences.ipPreference === 'auto'
+        ? endpointIPs[0]
+        : endpointIPs.find((ip) => isIP(ip) === (preferences.ipPreference === 'ipv6' ? 6 : 4))) ||
+      endpointIPs[0] ||
+      p.server,
     server_port: p.port,
     uuid: p.uuid,
-    packet_encoding: 'xudp',
-    ...(p.tls ? { tls: { enabled: true, server_name: p.serverName } } : {}),
+    packet_encoding: preferences.udpEncoding,
+    connect_timeout: preferences.connectTimeout + 's',
+    ...(p.tls
+      ? { tls: { enabled: true, server_name: p.serverName, min_version: preferences.tlsMin } }
+      : {}),
     ...(p.transport === 'ws'
       ? { transport: { type: 'ws', path: p.path, headers: { Host: p.serverName } } }
       : {}),
@@ -146,26 +167,29 @@ export function clientConfig(
       tag: 'device',
       interface_name: platform === 'darwin' ? 'utun188' : 'nightwire',
       address: ['172.29.255.1/30', 'fdfe:dcba:9876::1/126'],
-      mtu: 1400,
+      mtu: preferences.mtu,
       auto_route: true,
       strict_route: true,
       dns_mode: 'hijack',
-      stack: 'mixed',
+      stack: preferences.stack,
     });
   }
   return {
     log: { level: 'warn', timestamp: true },
     dns: {
-      servers: [{ type: 'local', tag: 'bootstrap' }, resolver('remote', 'proxy')],
+      servers: [
+        { type: 'local', tag: 'bootstrap' },
+        resolver('remote', 'proxy', preferences.dnsProvider),
+      ],
       final: 'remote',
-      strategy: 'prefer_ipv4',
+      strategy: preferences.ipPreference === 'ipv6' ? 'prefer_ipv6' : 'prefer_ipv4',
     },
     inbounds,
     outbounds: [proxy, { type: 'direct', tag: 'direct' }],
     route: {
       auto_detect_interface: true,
       default_domain_resolver: 'bootstrap',
-      rules: [{ port: 53, action: 'hijack-dns' }],
+      rules: [{ inbound: ['device'], port: 53, action: 'hijack-dns' }],
       final: 'proxy',
     },
   };

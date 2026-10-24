@@ -73,7 +73,7 @@ export class SessionManager {
     if (!response.ok) throw Error('the tunnel controller refused the request');
     return response.json();
   }
-  async launch(profile, mode) {
+  async launch(profile, mode, settings = {}) {
     const p = normalizeProfile(profile);
     const answers = await lookup(p.server, { all: true });
     const listener = net.createServer();
@@ -96,7 +96,12 @@ export class SessionManager {
     });
     const metricsPort = meter.address().port;
     await new Promise((r) => meter.close(r));
-    const generated = clientConfig(p, { mode, port, endpointIPs: answers.map((x) => x.address) });
+    const generated = clientConfig(p, {
+      mode,
+      port,
+      endpointIPs: answers.map((x) => x.address),
+      settings,
+    });
     generated.experimental = {
       clash_api: {
         external_controller: '127.0.0.1:' + metricsPort,
@@ -230,30 +235,30 @@ export class SessionManager {
     this.update({ status: 'disconnecting' });
     try {
       await this.disconnect();
-      this.update({ status: 'disconnected', mode: null });
+      this.update({ status: 'disconnected', mode: null, endedAt: Date.now() });
     } finally {
       this.busy = false;
       this.onChange();
     }
   }
-  async start(profile, { testOnly = false } = {}) {
+  async start(profile, { testOnly = false, settings = {} } = {}) {
     if (this.busy || this.session) throw Error('disconnect the current session first');
     this.busy = true;
     this.update({ status: 'checking', checks: null, error: null, logs: '', traffic: null });
     try {
-      let port = await this.launch(profile, 'proxy');
+      let port = await this.launch(profile, 'proxy', settings);
       const checks = await diagnostics(port);
       this.update({ checks });
       await this.disconnect();
       if (!checks.web.ok)
         throw Error(checks.web.error || 'the home server could not reach the web');
       if (testOnly) {
-        this.update({ status: 'disconnected', mode: null });
+        this.update({ status: 'disconnected', mode: null, endedAt: Date.now() });
         return checks;
       }
       this.update({ status: 'authorizing' });
-      port = await this.launch(profile, 'tun');
-      this.update({ status: 'checking', mode: 'tun' });
+      port = await this.launch(profile, 'tun', settings);
+      this.update({ status: 'checking', mode: 'tun', startedAt: Date.now(), endedAt: null });
       const [fullChecks, device] = await Promise.all([
         diagnostics(port),
         probeDevice().then(

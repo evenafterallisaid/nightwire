@@ -7,12 +7,14 @@ import {
   Menu,
   safeStorage,
   powerMonitor,
+  nativeTheme,
 } from 'electron';
 import { readFile, writeFile } from 'node:fs/promises';
 import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseProfile, shareLink } from './config.mjs';
 import { ProfileStore } from './profiles.mjs';
+import { SettingsStore, CONNECTION_SETTINGS } from './settings.mjs';
 import { SessionManager } from './session.mjs';
 
 const source = dirname(fileURLToPath(import.meta.url));
@@ -23,6 +25,7 @@ const directory = app.getPath('userData');
 let window,
   manager,
   store,
+  preferences,
   quitting = false,
   activeId = null,
   startupError = null;
@@ -48,6 +51,8 @@ function state() {
     ...manager.snapshot(),
     profiles: store.list(),
     activeId,
+    settings: preferences.value,
+    settingsSaved: preferences.saved,
     startupError,
     platform: process.platform,
     version: app.getVersion(),
@@ -76,6 +81,32 @@ function handle(channel, callback) {
     }
   });
 }
+function applyNativeAppearance() {
+  const choice = preferences.value.theme;
+  const requested = choice === 'system' ? 'system' : choice === 'paper' ? 'light' : 'dark';
+  if (nativeTheme.themeSource !== requested) nativeTheme.themeSource = requested;
+  const name =
+    choice === 'system' ? (nativeTheme.shouldUseDarkColors ? 'midnight' : 'paper') : choice;
+  const colors = {
+    midnight: ['#152a3a', '#102131'],
+    paper: ['#eef2f7', '#dde5ef'],
+    ember: ['#332c32', '#28232b'],
+    abyss: ['#121c2a', '#0c1420'],
+    moss: ['#263932', '#1d2c27'],
+    plum: ['#352d47', '#282237'],
+    ocean: ['#15353d', '#102b33'],
+    rose: ['#3b2e36', '#2d242d'],
+  }[name];
+  if (window && !window.isDestroyed()) {
+    window.setBackgroundColor(colors[0]);
+    if (process.platform === 'win32')
+      window.setTitleBarOverlay({
+        color: colors[1],
+        symbolColor: name === 'paper' ? '#1c3045' : '#edf2ff',
+        height: 42,
+      });
+  }
+}
 function canImport() {
   if (manager?.session || manager?.busy) throw Error('disconnect before importing an invite');
 }
@@ -90,6 +121,12 @@ async function importFile(file) {
 app
   .whenReady()
   .then(async () => {
+    preferences = new SettingsStore(directory);
+    try {
+      await preferences.load();
+    } catch (e) {
+      startupError = e.message;
+    }
     store = new ProfileStore(directory, safeStorage);
     try {
       await store.load();
@@ -113,6 +150,19 @@ app
     await manager.cleanupPrevious();
     activeId = store.list()[0]?.id || null;
     handle('state', state);
+    handle('settings', async (patch) => {
+      if (!patch || typeof patch !== 'object' || Array.isArray(patch))
+        throw Error('invalid settings');
+      if (
+        (manager.busy || manager.session) &&
+        CONNECTION_SETTINGS.some((key) => key in patch && patch[key] !== preferences.value[key])
+      )
+        throw Error('disconnect before changing connection settings');
+      await preferences.update(patch);
+      applyNativeAppearance();
+      emit();
+      return state();
+    });
     handle('import-text', async (text) => {
       canImport();
       const id = await store.add(parseProfile(text));
@@ -154,11 +204,11 @@ app
       return { saved: !choice.canceled };
     });
     handle('connect', async () => {
-      await manager.start(store.get(activeId));
+      await manager.start(store.get(activeId), { settings: preferences.value });
       return state();
     });
     handle('test', async () => {
-      await manager.start(store.get(activeId), { testOnly: true });
+      await manager.start(store.get(activeId), { testOnly: true, settings: preferences.value });
       return state();
     });
     handle('disconnect', async () => {
@@ -197,8 +247,13 @@ app
       ),
     );
     window = new BrowserWindow({
-      width: 1080,
-      height: 740,
+      width: 1100,
+      height: 760,
+      titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'hidden',
+      ...(process.platform === 'win32'
+        ? { titleBarOverlay: { color: '#102131', symbolColor: '#c9d7e8', height: 42 } }
+        : {}),
+      ...(process.platform === 'darwin' ? { trafficLightPosition: { x: 12, y: 14 } } : {}),
       minWidth: 900,
       minHeight: 620,
       title: 'nightwire',
@@ -211,6 +266,10 @@ app
         contextIsolation: true,
         nodeIntegration: false,
       },
+    });
+    applyNativeAppearance();
+    nativeTheme.on('updated', () => {
+      if (preferences.value.theme === 'system') applyNativeAppearance();
     });
     const page = pathToFileURL(join(source, 'index.html')).href;
     window.webContents.on('will-navigate', (event, url) => {

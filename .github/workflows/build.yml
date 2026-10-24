@@ -60,8 +60,8 @@ jobs:
           $entry=Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\nightwire'
           if ($entry.UninstallString -ne ('"'+$installed+'\uninstall.exe"')) { throw 'uninstall registration is invalid' }
           $env:ELECTRON_RUN_AS_NODE='1'
-          & "$installed\nightwire.exe" -e 'console.log(process.versions.electron)'
-          if ($LASTEXITCODE -ne 0) { throw 'installed runtime failed' }
+          $runtime=Start-Process "$installed\nightwire.exe" -ArgumentList @('-e','process.exit(process.versions.electron?0:1)') -Wait -PassThru
+          if ($runtime.ExitCode -ne 0) { throw 'installed runtime failed' }
           Remove-Item Env:ELECTRON_RUN_AS_NODE
           Start-Process "$installed\uninstall.exe" -ArgumentList '/S' -Wait
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
