@@ -9,14 +9,15 @@ test('real websocket transport carries tcp and udp, rejects private targets and 
  const dir=await mkdtemp(join(tmpdir(),'nightwire-test-'));const children=[];let stage='setup';const udp=dgram.createSocket('udp4');const web=createServer((q,s)=>s.end('nightwire transport ok'));const blocked=createServer((q,s)=>s.end('this must not be reachable'));
  try{
   await new Promise(r=>web.listen(0,'127.0.0.1',r));await new Promise(r=>blocked.listen(0,'127.0.0.1',r));await new Promise(r=>udp.bind(0,'127.0.0.1',r));udp.on('message',(m,r)=>udp.send(m,r.port,r.address));
-  const uuid=randomUUID(),remote=await freePort(),local=await freePort(),bad=await freePort();
+  const uuid=randomUUID(),remote=await freePort(),local=await freePort(),bad=await freePort(),metricsPort=await freePort(),secret=randomUUID();
   const server=serverConfig([{name:'test',uuid}],{port:remote,path:'/transport-test'});
   server.route.rules.splice(1,0,{ip_cidr:['127.0.0.1/32'],port:[web.address().port,udp.address().port],action:'route',outbound:'internet'});
   children.push(await run(server,dir,'server'));
   const p={server:'127.0.0.1',port:remote,uuid,tls:false,transport:'ws',path:'/transport-test'};
-  children.push(await run(clientConfig(p,{port:local}),dir,'client'));
+  const client=clientConfig(p,{port:local});client.experimental={clash_api:{external_controller:'127.0.0.1:'+metricsPort,secret}};children.push(await run(client,dir,'client'));
   stage='tcp';assert.match(await httpViaProxy(local,web.address().port),/nightwire transport ok/);
   stage='udp';const payload=Buffer.from('udp survived the websocket');assert.deepEqual(await udpExchange(local,'127.0.0.1',udp.address().port,payload),payload);
+  stage='real traffic counters';assert.equal((await fetch(`http://127.0.0.1:${metricsPort}/connections`)).status,401);const counters=await(await fetch(`http://127.0.0.1:${metricsPort}/connections`,{headers:{authorization:'Bearer '+secret}})).json();assert.ok(counters.uploadTotal>0);assert.ok(counters.downloadTotal>0);
   stage='private target rejection';assert.doesNotMatch(await httpViaProxy(local,blocked.address().port).catch(e=>{if(e.code==='ECONNRESET')return '';throw e;}),/this must not be reachable/);
   stage='invalid login';children.push(await run(clientConfig({...p,uuid:randomUUID()},{port:bad}),dir,'bad-client'));
   assert.doesNotMatch(await httpViaProxy(bad,web.address().port).catch(e=>{if(e.code==='ECONNRESET')return '';throw e;}),/nightwire transport ok/);

@@ -1,4 +1,20 @@
 const $=id=>document.getElementById(id);let state={profiles:[],status:'disconnected'},pending=false;
+const themes=['midnight','paper','ember'];
+function theme(name){if(!themes.includes(name))name='midnight';document.documentElement.dataset.theme=name;for(const button of document.querySelectorAll('button[data-theme]'))button.setAttribute('aria-pressed',String(button.dataset.theme===name));try{localStorage.setItem('nightwire-theme',name);}catch{}}
+let savedTheme;try{savedTheme=localStorage.getItem('nightwire-theme');}catch{}theme(savedTheme);
+for(const button of document.querySelectorAll('button[data-theme]'))button.onclick=()=>theme(button.dataset.theme);
+const history=[];let lastSample=0;
+function bytes(value){const units=['b','kb','mb','gb','tb'];let i=0;while(value>=1024&&i<units.length-1){value/=1024;i++;}return (i?value.toFixed(value<10?1:0):Math.round(value))+' '+units[i];}
+function renderTraffic(traffic,connected){
+ const fresh=traffic&&Date.now()-traffic.updatedAt<5000;
+ $('upload-rate').textContent=connected&&fresh?bytes(traffic.upBps)+'/s':connected?'…':'—';$('download-rate').textContent=connected&&fresh?bytes(traffic.downBps)+'/s':connected?'…':'—';
+ $('upload-total').textContent=bytes(traffic?.uploaded||0)+' this session';$('download-total').textContent=bytes(traffic?.downloaded||0)+' this session';
+ $('traffic-context').textContent=connected?(fresh?'live · last 60 samples':'waiting for counters'):traffic?'last session':'waiting for a connection';
+ if(!traffic&&lastSample){history.length=0;lastSample=0;}
+ if(connected&&fresh&&traffic.updatedAt!==lastSample){history.push([traffic.upBps,traffic.downBps]);if(history.length>60)history.shift();lastSample=traffic.updatedAt;}
+ const max=Math.max(1024,...history.flat());
+ for(const [id,index] of [['upload-line',0],['download-line',1]])$(id).setAttribute('d',history.map((point,i)=>(i?'L':'M')+(i*240/59).toFixed(1)+','+(44-point[index]/max*40).toFixed(1)).join(' '));
+}
 const busyStates=new Set(['checking','authorizing','disconnecting']);
 function error(message){$('error').textContent=message;$('error').hidden=!message;}
 function render(next){
@@ -12,6 +28,7 @@ function render(next){
  $('description').textContent=({connected:'this device’s traffic is going through your home server.',limited:'the web check passed, but the udp check failed. voice and games may need attention.',checking:'checking the server before calling this a connection.',authorizing:'approve your operating system’s administrator prompt to enable system-wide routing.',disconnecting:'stopping the tunnel and releasing its routes.',failed:'check the message above, then try the connection test.'})[state.status]||(profile?'ready when you are. connect to route this entire device through '+profile.server+'.':'add your invite to send this device’s traffic through your home server.');
  $('connect').textContent=connected?'disconnect':busy?'working…':'connect';$('connect').disabled=busy||!profile;
  $('test').disabled=busy||connected||!profile;$('export').disabled=busy||!profile;$('remove').disabled=busy||connected||!profile;$('add-invite').disabled=busy||connected;$('import-file').disabled=busy||connected;
+ renderTraffic(state.traffic,connected);
  $('routing-note').textContent=connected?'closing nightwire disconnects. your normal connection returns.':'system-wide routing includes web, voice, and game traffic.';
  $('profiles').replaceChildren();
  if(!state.profiles.length){const p=document.createElement('p');p.className='profile-empty';p.textContent='no invites yet. add one to get the packets moving.';$('profiles').append(p);}

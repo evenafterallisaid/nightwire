@@ -8,8 +8,20 @@ const manifestPath=process.argv[2];
 const spec=JSON.parse(readFileSync(manifestPath,'utf8'));
 if(spec.version!==1||!/^[a-f0-9]{64}$/.test(spec.token)||![spec.core,spec.config,spec.statusFile].every(isAbsolute)||dirname(spec.statusFile)!==dirname(manifestPath))throw Error('invalid worker session');
 const owner=statSync(dirname(manifestPath));
-const state={version:1,pid:process.pid,port:null,running:false,corePid:null,error:null,logs:'',stopReason:null};
-let child,lastBeat=Date.now(),closing=false,lease;
+if(spec.metricsPort!==undefined&&(!Number.isInteger(spec.metricsPort)||spec.metricsPort<1024||spec.metricsPort>65535))throw Error('invalid metrics port');
+const state={version:1,pid:process.pid,port:null,running:false,corePid:null,error:null,logs:'',stopReason:null,traffic:null};
+let child,lastBeat=Date.now(),closing=false,lease,meter,previousSample;
+async function sampleTraffic(){
+ if(!spec.metricsPort||closing)return;
+ try{
+  const response=await fetch(`http://127.0.0.1:${spec.metricsPort}/connections`,{headers:{authorization:'Bearer '+spec.token},signal:AbortSignal.timeout(800)});if(!response.ok)return;
+  const value=await response.json();if(closing)return;const uploaded=value.uploadTotal,downloaded=value.downloadTotal,now=Date.now();
+  if(![uploaded,downloaded].every(x=>Number.isSafeInteger(x)&&x>=0))return;
+  const seconds=previousSample?(now-previousSample.time)/1000:1;
+  state.traffic={uploaded,downloaded,upBps:previousSample?Math.max(0,uploaded-previousSample.uploaded)/seconds:0,downBps:previousSample?Math.max(0,downloaded-previousSample.downloaded)/seconds:0,updatedAt:now};
+  previousSample={uploaded,downloaded,time:now};
+ }catch{}
+}
 const ttl=Math.min(60000,Math.max(1000,spec.leaseMs||20000));
 function redact(text){return String(text).replaceAll(spec.token,'[session]').replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi,'[login]').replace(/\x1b\[[0-9;]*m/g,'');}
 function persist(){
@@ -24,7 +36,7 @@ function windowsInterrupt(pid){
  spawnSync('powershell.exe',['-NoProfile','-NonInteractive','-EncodedCommand',Buffer.from(code,'utf16le').toString('base64')],{windowsHide:true,timeout:3500,stdio:'ignore'});
 }
 async function shutdown(reason){
- if(closing)return;closing=true;clearInterval(lease);state.stopReason=reason;persist();
+ if(closing)return;closing=true;clearInterval(lease);clearInterval(meter);state.stopReason=reason;if(state.traffic){state.traffic.upBps=0;state.traffic.downBps=0;}persist();
  if(child&&child.exitCode===null){
   await new Promise(resolve=>{
    child.once('exit',resolve);
@@ -50,6 +62,7 @@ server.listen(0,'127.0.0.1',()=>{
  child.on('error',e=>{state.error=redact(e.message);persist();shutdown('backend failed');});
  child.stdout.on('data',log);child.stderr.on('data',log);state.corePid=child.pid;state.running=true;persist();
  child.once('exit',(code,signal)=>{state.running=false;if(!closing)state.error=redact(state.logs||`backend stopped (${code??signal})`);persist();if(!closing)shutdown('backend stopped');});
- lease=setInterval(()=>{if(Date.now()-lastBeat>ttl)shutdown('controller disconnected');},500);
+ lastBeat=Date.now();lease=setInterval(()=>{if(Date.now()-lastBeat>ttl)shutdown('controller disconnected');},500);
+ if(spec.metricsPort)meter=setInterval(sampleTraffic,1000);
 });
 process.on('SIGTERM',()=>shutdown('controller stopped'));process.on('SIGINT',()=>shutdown('controller stopped'));

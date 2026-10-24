@@ -41,8 +41,11 @@ export class SessionManager {
   const listener=net.createServer();await new Promise((r,j)=>{listener.once('error',j);listener.listen(0,'127.0.0.1',r);});const port=listener.address().port;await new Promise(r=>listener.close(r));
   await mkdir(this.directory,{recursive:true,mode:0o700});const dir=await mkdtemp(join(this.directory,'session-'));
   const token=randomBytes(32).toString('hex'),config=join(dir,'config.json'),statusFile=join(dir,'status.json'),manifest=join(dir,'session.json');
-  await writeFile(config,JSON.stringify(clientConfig(p,{mode,port,endpointIPs:answers.map(x=>x.address)})),{mode:0o600});
-  await writeFile(manifest,JSON.stringify({version:1,core:this.core,config,statusFile,token}),{mode:0o600});
+  const meter=net.createServer();await new Promise((r,j)=>{meter.once('error',j);meter.listen(0,'127.0.0.1',r);});const metricsPort=meter.address().port;await new Promise(r=>meter.close(r));
+  const generated=clientConfig(p,{mode,port,endpointIPs:answers.map(x=>x.address)});
+  generated.experimental={clash_api:{external_controller:'127.0.0.1:'+metricsPort,secret:token,access_control_allow_origin:['http://127.0.0.1'],access_control_allow_private_network:false}};
+  await writeFile(config,JSON.stringify(generated),{mode:0o600});
+  await writeFile(manifest,JSON.stringify({version:1,core:this.core,config,statusFile,token,metricsPort}),{mode:0o600});
   this.session={dir,token,localPort:port,port:null,child:null,heartbeat:null};
   let command,args,env={...process.env,ELECTRON_RUN_AS_NODE:'1'};
   if(mode==='tun'&&process.platform==='darwin'){
@@ -57,16 +60,17 @@ export class SessionManager {
   const child=spawn(command,args,{env,stdio:['ignore','ignore','pipe'],windowsHide:true});this.session.child=child;
   let launchError='';child.stderr.on('data',d=>launchError=(launchError+d.toString()).slice(-3000));child.on('error',e=>launchError=e.message);
   for(let i=0;i<180;i++){
-   try{const s=JSON.parse(await readFile(statusFile,'utf8'));this.session.port=s.port;if(s.error)throw Object.assign(Error(s.error),{workerFailed:true});if(s.running){this.session.heartbeat=setInterval(()=>this.maintain(),3000);for(let n=0;n<40;n++){try{(await connectSocket(port,'127.0.0.1',500)).destroy();return port;}catch{await sleep(150);}}throw Object.assign(Error('the tunnel did not open its local listener'),{workerFailed:true});}}
+   try{const s=JSON.parse(await readFile(statusFile,'utf8'));this.session.port=s.port;if(s.error)throw Object.assign(Error(s.error),{workerFailed:true});if(s.running){this.session.heartbeat=setInterval(()=>this.maintain(),1000);for(let n=0;n<40;n++){try{(await connectSocket(port,'127.0.0.1',500)).destroy();return port;}catch{await sleep(150);}}throw Object.assign(Error('the tunnel did not open its local listener'),{workerFailed:true});}}
    catch(e){if(e.workerFailed)throw e;}
    if(child.exitCode!==null)throw Error(launchError.trim()||'administrator access was cancelled or the tunnel could not start');await sleep(500);
   }
   throw Error('administrator approval timed out');
  }
  async maintain(){
-  if(!this.session)return;
-  try{await this.request('/heartbeat','POST');const s=await this.request('/status');if(!s.running)throw Error(s.error||'the tunnel stopped');this.update({logs:s.logs});}
-  catch(e){if(!this.busy){await this.stop();this.update({status:'failed',error:e.message});}}
+  if(!this.session||this.maintaining)return;const active=this.session;this.maintaining=true;
+  try{await this.request('/heartbeat','POST');const s=await this.request('/status');if(!s.running)throw Error(s.error||'the tunnel stopped');if(this.session===active)this.update({logs:s.logs,traffic:s.traffic});}
+  catch(e){if(this.session===active&&!this.busy){await this.stop();this.update({status:'failed',error:e.message});}}
+  finally{this.maintaining=false;}
  }
  async disconnect(){
   const s=this.session;if(!s)return;clearInterval(s.heartbeat);
@@ -74,7 +78,7 @@ export class SessionManager {
   if(!s.port&&s.child?.exitCode===null)s.child.kill('SIGTERM');
   let stopped=false;
   for(let i=0;i<260;i++){
-   try{const state=JSON.parse(await readFile(join(s.dir,'status.json'),'utf8'));if(!state.running){stopped=true;break;}}
+   try{const state=JSON.parse(await readFile(join(s.dir,'status.json'),'utf8'));if(!state.running){if(state.traffic)this.update({traffic:{...state.traffic,upBps:0,downBps:0}});stopped=true;break;}}
    catch{if(!s.child||s.child.exitCode!==null){stopped=true;break;}}
    await sleep(100);
   }
@@ -83,7 +87,7 @@ export class SessionManager {
  }
  async stop(){if(this.busy)return;this.busy=true;this.update({status:'disconnecting'});try{await this.disconnect();this.update({status:'disconnected',mode:null});}finally{this.busy=false;this.onChange();}}
  async start(profile,{testOnly=false}={}){
-  if(this.busy||this.session)throw Error('disconnect the current session first');this.busy=true;this.update({status:'checking',checks:null,error:null,logs:''});
+  if(this.busy||this.session)throw Error('disconnect the current session first');this.busy=true;this.update({status:'checking',checks:null,error:null,logs:'',traffic:null});
   try{
    let port=await this.launch(profile,'proxy');const checks=await diagnostics(port);this.update({checks});await this.disconnect();
    if(!checks.web.ok)throw Error(checks.web.error||'the home server could not reach the web');
