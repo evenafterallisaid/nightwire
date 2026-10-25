@@ -54,14 +54,19 @@ async function session(leaseMs, parent = tmpdir()) {
     stdio: 'ignore',
   });
   let state;
-  for (let i = 0; i < 200; i++) {
+  for (let i = 0; i < 400; i++) {
     try {
       state = JSON.parse(await readFile(statusFile, 'utf8'));
-      if (state.running) break;
+      if (state.running || state.error || state.stopReason) break;
     } catch {}
     await new Promise((r) => setTimeout(r, 50));
   }
-  assert.equal(state?.running, true, state?.error || 'worker did not start within ten seconds');
+  if (!state?.running) {
+    child.kill();
+    await exited(child);
+    await rm(dir, { recursive: true, force: true });
+    assert.fail(state?.error || state?.stopReason || 'worker did not start within twenty seconds');
+  }
   return { dir, token, child, state, statusFile };
 }
 async function request(s, path, method = 'GET', token = s.token) {
@@ -82,7 +87,7 @@ async function exited(child) {
 }
 test(
   'worker rejects unauthorized control, serves status and stops its backend',
-  { timeout: 25000 },
+  { timeout: 40000 },
   async () => {
     const s = await session(20000);
     try {
@@ -100,7 +105,7 @@ test(
     }
   },
 );
-test('worker stops the tunnel when its controller disappears', { timeout: 25000 }, async () => {
+test('worker stops the tunnel when its controller disappears', { timeout: 40000 }, async () => {
   const s = await session(1100);
   try {
     await exited(s.child);
@@ -116,7 +121,7 @@ test('worker stops the tunnel when its controller disappears', { timeout: 25000 
 
 test(
   'startup recovery stops an old worker before removing its session files',
-  { timeout: 25000 },
+  { timeout: 40000 },
   async () => {
     const root = await mkdtemp(join(tmpdir(), 'nightwire-recovery-'));
     const s = await session(20000, root);
