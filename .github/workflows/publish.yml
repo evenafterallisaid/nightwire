@@ -1,0 +1,80 @@
+name: publish verified installers
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: existing annotated release tag
+        required: true
+        type: string
+      build_run:
+        description: successful native build run for the tagged commit
+        required: true
+        type: string
+      notes:
+        description: release notes
+        required: true
+        type: string
+permissions:
+  actions: read
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RELEASE_TAG: ${{ inputs.tag }}
+      BUILD_RUN: ${{ inputs.build_run }}
+      RELEASE_NOTES: ${{ inputs.notes }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.tag }}
+          fetch-depth: 0
+      - name: verify the tested commit
+        run: |
+          python3 - <<'PY'
+          import json, os, re, subprocess
+          tag, run = os.environ['RELEASE_TAG'], os.environ['BUILD_RUN']
+          assert re.fullmatch(r'v[0-9]+\.[0-9]+\.[0-9]+(?:-[a-z0-9.]+)?', tag)
+          assert run.isdigit()
+          assert subprocess.check_output(['git','cat-file','-t',tag],text=True).strip() == 'tag'
+          commit = subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()
+          result = json.loads(subprocess.check_output(['gh','run','view',run,'--json','headSha,status,conclusion,workflowName'],text=True))
+          assert result['workflowName'] == 'build clients'
+          assert result['headSha'] == commit and result['status'] == 'completed' and result['conclusion'] == 'success'
+          version = json.load(open('package.json'))['version']
+          assert tag == 'v' + version
+          assert subprocess.run(['gh','release','view',tag],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL).returncode != 0, 'release already exists'
+          print('verified successful native build for ' + commit)
+          PY
+      - name: download native installers with gh
+        run: |
+          gh run download "$BUILD_RUN" --name installer-darwin --dir release
+          gh run download "$BUILD_RUN" --name installer-win32 --dir release
+      - name: prepare server kit, matching source, and checksums
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, os, pathlib, subprocess, urllib.request, zipfile
+          root = pathlib.Path.cwd()
+          out = root / 'release'
+          version = json.load(open('package.json'))['version']
+          commit = subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()
+          expected = {f'nightwire-{version}-macos-arm64.pkg', f'nightwire-{version}-windows-x64-setup.exe'}
+          assert {p.name for p in out.iterdir()} == expected
+          files = ['server/admin.mjs','server/install.ps1','source/config.mjs','source/settings.mjs','docs/server.md','docs/settings.md','docs/privacy.md','docs/architecture.md','LICENSE','third-party.md','licenses/gpl-3.0.txt']
+          with zipfile.ZipFile(out / f'nightwire-{version}-windows-server-kit.zip','w',zipfile.ZIP_DEFLATED) as archive:
+              for name in files: archive.write(root / name, name)
+              archive.writestr('README.md',pathlib.Path('docs/server.md').read_text())
+              archive.writestr('version.txt',f'nightwire {version}\nsource commit {commit}\nhttps://github.com/evenafterallisaid/nightwire\n')
+          source = out / 'sing-box-1.14.4-source.tar.gz'
+          urllib.request.urlretrieve('https://github.com/SagerNet/sing-box/archive/refs/tags/v1.14.4.tar.gz', source)
+          assert hashlib.sha256(source.read_bytes()).hexdigest() == '0958ccd23b1ea9a141d715d15478b1e040fd04bcca19d8ff5529636b1b753e18'
+          sums = ''.join(hashlib.file_digest(p.open('rb'),'sha256').hexdigest()+'  '+p.name+'\n' for p in sorted(out.iterdir()))
+          (out / 'sha256sums.txt').write_text(sums)
+          pathlib.Path('release-notes.md').write_text(os.environ['RELEASE_NOTES'])
+          PY
+      - name: publish tagged beta with gh
+        run: gh release create "$RELEASE_TAG" release/* --verify-tag --prerelease --title "nightwire $RELEASE_TAG" --notes-file release-notes.md
+      - name: verify published assets
+        run: gh release view "$RELEASE_TAG" --json url,tagName,isPrerelease,assets
