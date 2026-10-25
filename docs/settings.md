@@ -20,7 +20,7 @@ certificate verification stays enabled. a tls-version setting changes the handsh
 
 quad9's default service can block malicious domains. providers' privacy and filtering policies differ: see [quad9's service details](https://docs.quad9.net/services/), [google's dns-over-https documentation](https://developers.google.com/speed/public-dns/docs/doh), and [cloudflare's resolver documentation](https://developers.cloudflare.com/1.1.1.1/encryption/dns-over-https/).
 
-the endpoint's initial hostname lookup uses the operating system before routing starts. normal intercepted dns goes through the selected provider. the gateway independently resolves proxy requests that carry hostnames using its own resolver. changing the desktop preference does not rewrite the gateway's configuration.
+the endpoint's initial hostname lookup uses the operating system before routing starts. normal intercepted dns goes through the selected provider. macos temporarily selects the tun resolver while connected and restores its ordinary resolver on disconnect. the gateway independently resolves proxy requests that carry hostnames using its own resolver. changing the desktop preference does not rewrite the gateway's configuration.
 
 the traffic view has a shared speed scale, elapsed-time labels, and separate solid download and dashed upload lines. hover to inspect a sample, or focus the graph and use the left/right arrow keys. the scale adapts to the visible window; an empty window has no invented activity. samples reset on a new connection and stay visible until the next session or app restart. counters exclude outer tls/websocket overhead.
 

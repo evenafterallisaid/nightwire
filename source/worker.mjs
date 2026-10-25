@@ -3,6 +3,7 @@ import { dirname, join, isAbsolute } from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { createServer } from 'node:http';
 import { timingSafeEqual } from 'node:crypto';
+import { installMacDns } from './mac-dns.mjs';
 
 const manifestPath = process.argv[2];
 const spec = JSON.parse(readFileSync(manifestPath, 'utf8'));
@@ -36,6 +37,8 @@ let child,
   lease,
   meter,
   previousSample;
+const startupAbort = new AbortController();
+let dnsSetup = Promise.resolve(null);
 async function sampleTraffic() {
   if (!spec.metricsPort || closing) return;
   try {
@@ -102,6 +105,9 @@ async function shutdown(reason) {
   closing = true;
   clearInterval(lease);
   clearInterval(meter);
+  startupAbort.abort();
+  const restoreDns = await dnsSetup.catch(() => null);
+  if (restoreDns) await restoreDns();
   state.stopReason = reason;
   if (state.traffic) {
     state.traffic.upBps = 0;
@@ -148,7 +154,7 @@ const server = createServer((req, res) => {
   res.writeHead(404);
   res.end('{"error":"not found"}');
 });
-server.listen(0, '127.0.0.1', () => {
+server.listen(0, '127.0.0.1', async () => {
   state.port = server.address().port;
   persist();
   const check = spawnSync(spec.core, ['check', '-c', spec.config], {
@@ -174,14 +180,35 @@ server.listen(0, '127.0.0.1', () => {
   child.stdout.on('data', log);
   child.stderr.on('data', log);
   state.corePid = child.pid;
-  state.running = true;
-  persist();
   child.once('exit', (code, signal) => {
     state.running = false;
     if (!closing) state.error = redact(state.logs || `backend stopped (${code ?? signal})`);
     persist();
     if (!closing) shutdown('backend stopped');
   });
+  const config = JSON.parse(readFileSync(spec.config, 'utf8'));
+  if (process.platform === 'darwin' && config.inbounds?.some((x) => x.type === 'tun')) {
+    dnsSetup = installMacDns({
+      signal: startupAbort.signal,
+      onFailure: (error) => {
+        state.error = redact(error.message);
+        shutdown('system dns stopped');
+      },
+    });
+    try {
+      await dnsSetup;
+    } catch (error) {
+      if (!closing) {
+        state.error = redact(error.message);
+        persist();
+        shutdown('system dns setup failed');
+      }
+      return;
+    }
+  }
+  if (closing) return;
+  state.running = true;
+  persist();
   lastBeat = Date.now();
   lease = setInterval(() => {
     if (Date.now() - lastBeat > ttl) shutdown('controller disconnected');

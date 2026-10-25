@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 import net from 'node:net';
 import { clientConfig } from './config.mjs';
 import { probeDevice } from './device.mjs';
+import { hasTunnelDns } from './mac-dns.mjs';
 if (!process.argv.includes('--privileged'))
   throw Error('this test changes routes; run explicitly with --privileged as administrator');
 const dir = await mkdtemp(join(tmpdir(), 'nightwire-tun-smoke-')),
@@ -45,6 +46,8 @@ const child = spawn(process.execPath, [resolve(import.meta.dirname, 'worker.mjs'
   env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
 });
 let status, heartbeat;
+const crash = process.argv.includes('--worker-crash');
+if (crash && process.platform !== 'darwin') throw Error('dns crash smoke requires macos');
 async function control(path) {
   return fetch(`http://127.0.0.1:${status.port}${path}`, {
     method: 'POST',
@@ -79,7 +82,8 @@ try {
   console.log('real tun driver, ipv4/ipv6 routes, system dns and direct https passed');
 } finally {
   clearInterval(heartbeat);
-  if (status?.port) await control('/stop').catch(() => {});
+  if (crash && status?.running) child.kill('SIGKILL');
+  else if (status?.port) await control('/stop').catch(() => {});
   await new Promise((resolve, reject) => {
     if (child.exitCode !== null) return resolve();
     const timer = setTimeout(() => reject(Error('worker shutdown timed out')), 15000);
@@ -89,7 +93,35 @@ try {
     });
   });
   const after = JSON.parse(await readFile(statusFile, 'utf8'));
-  assert.equal(after.running, false);
+  if (!crash) assert.equal(after.running, false);
+  if (process.platform === 'darwin') {
+    try {
+      for (let n = 0; ; n++) {
+        const dns = execFileSync('/usr/sbin/scutil', ['--dns'], { encoding: 'utf8' });
+        if (!hasTunnelDns(dns) && !dns.includes('172.29.255.2')) break;
+        if (n >= 49) throw Error('temporary tunnel dns survived worker shutdown');
+        await new Promise((r) => setTimeout(r, 100));
+      }
+      console.log(
+        crash ? 'temporary dns removed after worker sigkill' : 'ordinary system dns restored',
+      );
+    } finally {
+      // the crash fixture must reap the intentionally orphaned core itself.
+      if (crash && status?.corePid) {
+        try {
+          process.kill(status.corePid, 'SIGTERM');
+        } catch {}
+        for (let n = 0; n < 50; n++) {
+          try {
+            execFileSync('/sbin/ifconfig', ['utun188'], { stdio: 'ignore' });
+          } catch {
+            break;
+          }
+          await new Promise((r) => setTimeout(r, 100));
+        }
+      }
+    }
+  }
   if (process.platform === 'win32') {
     const routes = execFileSync(
       'powershell.exe',

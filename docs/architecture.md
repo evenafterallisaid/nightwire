@@ -16,6 +16,8 @@ the desktop controller resolves the endpoint before installing routes and pins i
 
 the ui stays unprivileged. only the small worker and core are elevated after the native administrator prompt. the worker validates the config, serves authenticated local control, keeps bounded logs, and stops the core when heartbeats disappear. macos uses a termination signal. windows requests a console control event before a bounded forced-stop fallback. a normal core shutdown removes its routes and tun interface.
 
+on macos the worker opens a temporary system dns resolver for the tun address. its dynamic-store entry belongs to an open scutil session and disappears when that session closes, including when the worker loses its pipe. disconnect closes this resolver before stopping the core; persistent wi-fi dns preferences are never overwritten. connection verification checks that macos selected this resolver.
+
 a force kill, machine crash, conflicting vpn, or operating system bug can still leave networking inconsistent. disconnect first. if that fails, close the app and wait about 30 seconds for its lease to expire. inspect for remaining `sing-box` processes and the `nightwire` or `utun188` interface before restarting. rebooting is the final recovery path; do not blindly delete interfaces belonging to another vpn.
 
 the controller runs a proxy preflight before elevation. full-device success additionally requires the operating system to select nightwire's ipv4 and ipv6 routes, resolve a name through the system resolver, and complete a direct https request. udp is measured independently. a failed device check disconnects and reports the cause rather than displaying a false connected state.

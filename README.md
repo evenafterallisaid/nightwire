@@ -32,7 +32,7 @@ the desktop workspace has connection, traffic, and settings views, native window
 
 - web: a verified https request through the gateway reaches discord's website.
 - udp: a dns query and response cross a socks udp association, vless xudp, and the gateway.
-- device routes & dns: both address families select the tun interface, system name resolution succeeds, and an https request made without a proxy agent works.
+- device routes & dns: both address families select the tun interface, macos selects the temporary tunnel resolver, system name resolution succeeds, and an https request made without a proxy agent works.
 
 check times include setup. they are not ping measurements, proof of a working discord call, or a game-streaming benchmark. a successful test-connection preflight does not enable full-device routing.
 

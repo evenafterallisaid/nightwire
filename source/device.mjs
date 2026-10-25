@@ -2,6 +2,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { lookup } from 'node:dns/promises';
 import https from 'node:https';
+import { hasTunnelDns } from './mac-dns.mjs';
 
 const run = promisify(execFile);
 export async function probeDevice() {
@@ -15,6 +16,8 @@ export async function probeDevice() {
       if (!/interface:\s+utun188\b/.test(stdout))
         throw Error('the operating system has not selected the nightwire route');
     }
+    const dns = await run('/usr/sbin/scutil', ['--dns'], { timeout: 5000 });
+    if (!hasTunnelDns(dns.stdout)) throw Error('macos has not selected the nightwire dns resolver');
   } else if (process.platform === 'win32') {
     const command =
       "@('1.1.1.1','2606:4700:4700::1111') | ForEach-Object { (Find-NetRoute -RemoteIPAddress $_ -ErrorAction Stop | Select-Object -First 1).InterfaceAlias }";

@@ -30,6 +30,11 @@ jobs:
       - name: verify windows tun driver and cleanup
         if: runner.os == 'Windows'
         run: node source/tun-smoke.mjs --privileged
+      - name: verify macos tun dns and crash cleanup
+        if: runner.os == 'macOS'
+        run: |
+          sudo -n "$(command -v node)" source/tun-smoke.mjs --privileged
+          sudo -n "$(command -v node)" source/tun-smoke.mjs --privileged --worker-crash
       - run: npm run icons
       - name: package macos
         if: runner.os == 'macOS'
