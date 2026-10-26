@@ -4,7 +4,8 @@ open **settings** in the sidebar. appearance changes immediately. connection con
 
 | control                   | what it does                                                                                                                                                             |
 | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| theme                     | midnight, paper, ember, abyss, moss, plum, ocean, rose, or follow the system appearance                                                                                  |
+| theme                     | amoled black (default), midnight, paper, ember, abyss, moss, plum, ocean, rose, or follow the system appearance                                                          |
+| surface finish            | frosted glass (default), or solid surfaces; operating-system reduced-transparency preferences take priority                                                              |
 | speed units               | bytes per second or decimal bits per second; cumulative totals remain bytes                                                                                              |
 | graph history             | 30 seconds, 1 minute, or 5 minutes of real samples from the current session                                                                                              |
 | minimum tls               | require tls 1.2 or newer, or require tls 1.3; the server must support the chosen minimum                                                                                 |

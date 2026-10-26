@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="amoled" data-material="glass">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -20,34 +20,43 @@
         <nav class="app-navigation" aria-label="main">
           <button data-view="connection" aria-current="page">
             <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 3 4 6v6c0 5 8 9 8 9s8-4 8-9V6z" /></svg
+              <path d="m12 3-7 3v6c0 4.3 7 8.5 7 8.5s7-4.2 7-8.5V6z M9 12l2 2 4-5" /></svg
             >connection</button
           ><button data-view="traffic">
             <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M3 17h3l3-11 5 15 3-12 2 8h2" /></svg
+              <path d="M4.5 16v-4 M9.5 19V7 M14.5 16V4 M19.5 13V9" /></svg
             >traffic</button
           ><button id="open-settings" data-view="settings">
             <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M4 7h16M4 17h16M9 4v6M15 14v6" /></svg
+              <path d="M4 7.5h4 M14 7.5h6 M4 16.5h9 M19 16.5h1" />
+              <circle cx="11" cy="7.5" r="3" />
+              <circle cx="16" cy="16.5" r="3" /></svg
             >settings
           </button>
         </nav>
         <div class="sidebar-heading">
           <h2>saved connections</h2>
-          <button id="add-invite" class="icon-button" aria-label="add an invite">+</button>
+          <button id="add-invite" class="icon-button" aria-label="add an invite">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 5v14 M5 12h14" />
+            </svg>
+          </button>
         </div>
         <div id="profiles" class="profile-list"></div>
         <div class="sidebar-bottom">
           <div class="scope"><span class="scope-dot"></span>full-device routing</div>
           <p>packets don’t sleep.</p>
-          <small id="version">v0.2.0 beta</small>
+          <small id="version">v0.2.0</small>
         </div>
       </aside>
       <main>
         <header class="workspace-header">
           <h2 id="page-title">connection</h2>
           <div class="header-actions">
-            <button id="import-file" class="quiet">import invite</button
+            <button id="import-file" class="quiet icon-label">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 3.5v10 m-4-4 4 4 4-4 M4.5 14v5.5h15V14" /></svg
+              ><span>import invite</span></button
             ><span id="status-pill" class="status-pill">offline</span>
           </div>
         </header>
@@ -61,7 +70,7 @@
               </div>
               <div class="connection-symbol" aria-hidden="true">
                 <svg viewBox="0 0 48 48">
-                  <path d="M24 6 9 12v12c0 10 15 18 15 18s15-8 15-18V12z" />
+                  <path d="m24 6-14 6v11c0 10 14 18 14 18s14-8 14-18V12z" />
                   <path d="m17 24 5 5 10-11" />
                 </svg>
               </div>
@@ -70,8 +79,15 @@
               <p id="endpoint-address" class="endpoint-address">no invite selected</p>
               <p id="description" class="description">import an invite to connect this device.</p>
               <div class="actions">
-                <button id="connect" class="primary" disabled>connect</button
-                ><button id="test" class="secondary" disabled>test</button>
+                <button id="connect" class="primary" disabled>
+                  <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 3.5v9 M7 6.8a8 8 0 1 0 10 0" /></svg
+                  ><span id="connect-label">connect</span></button
+                ><button id="test" class="secondary" disabled>
+                  <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M3 12h4l3-6 4 12 3-6h4" /></svg
+                  ><span>test</span>
+                </button>
               </div>
               <p id="routing-note" class="routing-note">web, dns, tcp, and udp</p>
               <dl class="connection-details">
@@ -101,8 +117,15 @@
                 </div>
               </dl>
               <div class="profile-tools">
-                <button id="export" class="quiet" disabled>export invite</button
-                ><button id="remove" class="quiet" disabled>remove</button>
+                <button id="export" class="quiet icon-label" disabled>
+                  <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M14 4h6v6 M20 4l-9 9 M10 5H5v14h14v-5" /></svg
+                  ><span>export invite</span></button
+                ><button id="remove" class="quiet icon-label" disabled>
+                  <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M4.5 7h15 M9 7V4h6v3 M6.5 7l1 13h9l1-13 M10 10.5v6 M14 10.5v6" /></svg
+                  ><span>remove</span>
+                </button>
               </div>
             </section>
             <div class="monitor-pane">
@@ -113,12 +136,18 @@
                 </div>
                 <div class="traffic-stats">
                   <div>
-                    <span class="traffic-label upload">↑ upload</span
+                    <span class="traffic-label upload"
+                      ><svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M12 19V5 m-5 5 5-5 5 5 M5 19h14" /></svg
+                      >upload</span
                     ><strong id="upload-rate">—</strong
                     ><small id="upload-total">0 b this session</small>
                   </div>
                   <div>
-                    <span class="traffic-label download">↓ download</span
+                    <span class="traffic-label download"
+                      ><svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M12 5v14 m-5-5 5 5 5-5 M5 5h14" /></svg
+                      >download</span
                     ><strong id="download-rate">—</strong
                     ><small id="download-total">0 b this session</small>
                   </div>
@@ -207,7 +236,9 @@
             <section class="settings-section">
               <h3>appearance</h3>
               <div class="theme-grid" role="group" aria-label="choose a theme">
-                <button data-theme="midnight" aria-pressed="false">
+                <button data-theme="amoled" aria-pressed="false">
+                  <i class="swatch amoled"></i>amoled black</button
+                ><button data-theme="midnight" aria-pressed="false">
                   <i class="swatch midnight"></i>midnight</button
                 ><button data-theme="paper" aria-pressed="false">
                   <i class="swatch paper"></i>paper</button
@@ -226,6 +257,16 @@
                 ><button data-theme="system" aria-pressed="false">
                   <i class="swatch system"></i>system
                 </button>
+              </div>
+              <div class="settings-row">
+                <div>
+                  <label for="setting-surfaceStyle">surface finish</label
+                  ><small>frosted glass or a quieter solid surface.</small>
+                </div>
+                <select id="setting-surfaceStyle" data-setting="surfaceStyle">
+                  <option value="glass">frosted glass</option>
+                  <option value="solid">solid</option>
+                </select>
               </div>
               <div class="settings-row">
                 <div>

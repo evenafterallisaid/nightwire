@@ -1,7 +1,8 @@
 import { readFile, writeFile, mkdir, rename } from 'node:fs/promises';
 import { join } from 'node:path';
 export const DEFAULT_SETTINGS = Object.freeze({
-  theme: 'midnight',
+  theme: 'amoled',
+  surfaceStyle: 'glass',
   rateUnit: 'bytes',
   chartSeconds: 60,
   dnsProvider: 'cloudflare',
@@ -26,7 +27,19 @@ export const CONNECTION_SETTINGS = [
   'destinationFamily',
 ];
 const choices = {
-  theme: ['midnight', 'paper', 'ember', 'abyss', 'moss', 'plum', 'ocean', 'rose', 'system'],
+  theme: [
+    'amoled',
+    'midnight',
+    'paper',
+    'ember',
+    'abyss',
+    'moss',
+    'plum',
+    'ocean',
+    'rose',
+    'system',
+  ],
+  surfaceStyle: ['glass', 'solid'],
   rateUnit: ['bytes', 'bits'],
   chartSeconds: [30, 60, 300],
   dnsProvider: ['cloudflare', 'quad9', 'google'],

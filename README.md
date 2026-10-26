@@ -12,7 +12,7 @@ coffee was involved. certificate verification survived.
 
 [download the latest release](https://github.com/evenafterallisaid/nightwire/releases). macos apple silicon gets a `.pkg`; windows x64 gets a `setup.exe`. intel macs and windows arm are not packaged in this release.
 
-these beta installers have no developer-id notarization or authenticode signature. macos application code has an ad-hoc signature. use your operating system's documented approval flow only if you trust this source and its release checksums. the app asks for administrator approval when connecting; installation does not silently enable a tunnel.
+the installers have no developer-id notarization or authenticode signature. macos application code has an ad-hoc signature. use your operating system's documented approval flow only if you trust this source and its release checksums. the app asks for administrator approval when connecting; installation does not silently enable a tunnel.
 
 1. install and open nightwire.
 2. import your private `.nightwire` invite, or paste its vless link.
@@ -24,7 +24,9 @@ these beta installers have no developer-id notarization or authenticode signatur
 
 ## make it yours
 
-the desktop workspace has connection, traffic, and settings views, native window controls, and eight themes plus system appearance. the graph has readable rate/time axes and sample inspection. choose a 30-second, 1-minute, or 5-minute window, and bytes or bits per second. rates and session totals come from actual tunnel counters. narrow scrollbars follow the theme.
+the desktop workspace has connection, traffic, and settings views, native window controls, and nine themes plus system appearance. the graph has readable rate/time axes and sample inspection. choose a 30-second, 1-minute, or 5-minute window, and bytes or bits per second. rates and session totals come from actual tunnel counters. narrow scrollbars follow the theme.
+
+amoled black is the default, with frosted panels and custom icons. choose solid surfaces for less transparency; reduced-transparency and reduced-motion preferences are respected. existing saved themes are preserved. graph updates ease between real samples; log rows arrive quietly, and disclosure arrows open without the jump scare.
 
 [settings explained](docs/settings.md) covers verified tls requirements, encrypted dns providers, address selection, timeouts, mtu, network stacks, and udp compatibility. connection changes apply on the next connection. there is a reset-defaults button for the experiments that needed less coffee.
 

@@ -49,7 +49,7 @@ if (target === 'darwin') {
     CFBundleExecutable: 'nightwire',
     CFBundleIconFile: 'nightwire.icns',
     CFBundleShortVersionString: '0.2.0',
-    CFBundleVersion: '2',
+    CFBundleVersion: '3',
   })) {
     const regex = new RegExp(`(<key>${key}</key>\\s*<string>)[^<]*(</string>)`);
     if (regex.test(plist)) plist = plist.replace(regex, `$1${value}$2`);
@@ -100,8 +100,8 @@ if (target === 'darwin') {
     icon.icons.map((x) => x.data),
   );
   const info = ResEdit.Resource.VersionInfo.fromEntries(res.entries)[0];
-  info.setFileVersion(0, 2, 0, 2, 1033);
-  info.setProductVersion(0, 2, 0, 2, 1033);
+  info.setFileVersion(0, 2, 0, 3, 1033);
+  info.setProductVersion(0, 2, 0, 3, 1033);
   info.setStringValues(
     { lang: 1033, codepage: 1200 },
     {

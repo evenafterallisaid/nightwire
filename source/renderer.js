@@ -2,15 +2,27 @@ import { formatBytes as bytes, trafficChart, formatRate } from './traffic.mjs';
 const $ = (id) => document.getElementById(id);
 let state = { profiles: [], status: 'disconnected' },
   pending = false;
-const themes = ['midnight', 'paper', 'ember', 'abyss', 'moss', 'plum', 'ocean', 'rose', 'system'];
+const themes = [
+  'amoled',
+  'midnight',
+  'paper',
+  'ember',
+  'abyss',
+  'moss',
+  'plum',
+  'ocean',
+  'rose',
+  'system',
+];
 const systemTheme = matchMedia('(prefers-color-scheme: dark)');
-let selectedTheme = 'midnight',
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+let selectedTheme = 'amoled',
   firstSettings = true;
 function theme(name) {
-  if (!themes.includes(name)) name = 'midnight';
+  if (!themes.includes(name)) name = 'amoled';
   selectedTheme = name;
   document.documentElement.dataset.theme =
-    name === 'system' ? (systemTheme.matches ? 'midnight' : 'paper') : name;
+    name === 'system' ? (systemTheme.matches ? 'amoled' : 'paper') : name;
   for (const button of document.querySelectorAll('button[data-theme]'))
     button.setAttribute('aria-pressed', String(button.dataset.theme === name));
   try {
@@ -42,10 +54,19 @@ async function changeSetting(patch) {
   }
 }
 function view(name) {
+  const changed = document.body.dataset.view !== name;
   document.body.dataset.view = name;
   $('page-title').textContent = name;
   $('settings-dialog').hidden = name !== 'settings';
   $('connection-workspace').hidden = name === 'settings';
+  if (changed && !reducedMotion.matches)
+    (name === 'settings' ? $('settings-dialog') : $('connection-workspace')).animate(
+      [
+        { opacity: 0, transform: 'translateY(5px)' },
+        { opacity: 1, transform: 'none' },
+      ],
+      { duration: 200, easing: 'ease-out' },
+    );
   for (const button of document.querySelectorAll('button[data-view]')) {
     if (button.dataset.view === name) button.setAttribute('aria-current', 'page');
     else button.removeAttribute('aria-current');
@@ -63,7 +84,8 @@ for (const input of document.querySelectorAll('[data-setting]'))
     });
 $('reset-settings').onclick = () =>
   changeSetting({
-    theme: 'midnight',
+    theme: 'amoled',
+    surfaceStyle: 'glass',
     rateUnit: 'bytes',
     chartSeconds: 60,
     dnsProvider: 'cloudflare',
@@ -78,6 +100,71 @@ $('reset-settings').onclick = () =>
   });
 const history = [];
 let lastSample = 0;
+let graphFrame = 0,
+  graphSignature = '',
+  graphPoints = [];
+function drawGraph(plot) {
+  const signature = plot.paths.join('|');
+  if (signature === graphSignature) return;
+  graphSignature = signature;
+  cancelAnimationFrame(graphFrame);
+  const target = plot.visible.map((point) => ({
+    time: point.time,
+    x: plot.x(point.time),
+    up: plot.y(point.up),
+    down: plot.y(point.down),
+  }));
+  const previous = new Map(graphPoints.map((point) => [point.time, point]));
+  const from = target.map((point) => previous.get(point.time) || graphPoints.at(-1) || point);
+  const start = performance.now();
+  function frame(now) {
+    const progress =
+      reducedMotion.matches || !graphPoints.length ? 1 : Math.min(1, (now - start) / 280);
+    const eased = 1 - (1 - progress) ** 3;
+    // only the drawn geometry eases; labels and inspected samples keep their real values.
+    graphPoints = target.map((point, index) => ({
+      time: point.time,
+      ...Object.fromEntries(
+        ['x', 'up', 'down'].map((key) => [
+          key,
+          from[index][key] + (point[key] - from[index][key]) * eased,
+        ]),
+      ),
+    }));
+    for (const key of ['up', 'down'])
+      $(key === 'up' ? 'upload-line' : 'download-line').setAttribute(
+        'd',
+        graphPoints
+          .map(
+            (point, index) => `${index ? 'L' : 'M'}${point.x.toFixed(1)},${point[key].toFixed(1)}`,
+          )
+          .join(' '),
+      );
+    if (progress < 1) graphFrame = requestAnimationFrame(frame);
+  }
+  frame(start);
+}
+let renderedLogs = '';
+function renderLogs(text) {
+  if (text === renderedLogs) return;
+  const log = $('log-content');
+  const atEnd = log.scrollHeight - log.scrollTop - log.clientHeight < 24;
+  const previous = renderedLogs.split('\n');
+  const lines = text.split('\n');
+  // keep existing rows intact so incoming counters never replay old log animations.
+  let shared = 0;
+  while (shared < lines.length && shared < previous.length && lines[shared] === previous[shared])
+    shared++;
+  while (log.childNodes.length > shared) log.lastChild.remove();
+  for (const line of lines.slice(shared)) {
+    const row = document.createElement('span');
+    row.className = 'log-line';
+    row.textContent = line || '\u200b';
+    log.append(row);
+  }
+  renderedLogs = text;
+  if (atEnd) log.scrollTop = log.scrollHeight;
+}
 function renderTraffic(traffic, connected) {
   const fresh = traffic && Date.now() - traffic.updatedAt < 5000;
   $('upload-rate').textContent = connected && fresh ? rate(traffic.upBps) : connected ? '…' : '—';
@@ -104,8 +191,7 @@ function renderTraffic(traffic, connected) {
   const plot = trafficChart(history, plotOptions());
   $('chart-top').textContent = rate(plot.scale);
   $('chart-mid').textContent = rate(plot.scale / 2);
-  $('upload-line').setAttribute('d', plot.paths[0]);
-  $('download-line').setAttribute('d', plot.paths[1]);
+  drawGraph(plot);
   $('chart-start').textContent = plotOptions().windowSeconds + 's ago';
   $('chart-middle').textContent = plotOptions().windowSeconds / 2 + 's ago';
   $('traffic-unit-label').textContent =
@@ -189,6 +275,7 @@ function render(next) {
   const connected = ['connected', 'limited'].includes(state.status),
     busy = state.busy || busyStates.has(state.status) || pending;
   if (state.settings) {
+    document.documentElement.dataset.material = state.settings.surfaceStyle || 'glass';
     if (firstSettings && !state.settingsSaved && savedTheme && themes.includes(savedTheme)) {
       firstSettings = false;
       changeSetting({ theme: savedTheme });
@@ -284,7 +371,7 @@ function render(next) {
     (profile
       ? 'ready when you are. connect to route this entire device through ' + profile.server + '.'
       : 'add your invite to send this device’s traffic through your home server.');
-  $('connect').textContent = connected ? 'disconnect' : busy ? 'working…' : 'connect';
+  $('connect-label').textContent = connected ? 'disconnect' : busy ? 'working…' : 'connect';
   $('connect').disabled = busy || !profile;
   $('test').disabled = busy || connected || !profile;
   $('export').disabled = busy || !profile;
@@ -325,7 +412,7 @@ function render(next) {
     $(type + '-result').title = check?.error || '';
   }
   $('check-context').textContent = state.checks ? 'latest transport check' : 'no checks yet';
-  $('log-content').textContent = state.logs || 'nothing brewing yet.';
+  renderLogs(state.logs || 'nothing brewing yet.');
   error(state.error || state.startupError || '');
 }
 async function request(channel, ...args) {

@@ -74,7 +74,14 @@ jobs:
           (out / 'sha256sums.txt').write_text(sums)
           pathlib.Path('release-notes.md').write_text(os.environ['RELEASE_NOTES'])
           PY
-      - name: publish tagged beta with gh
-        run: gh release create "$RELEASE_TAG" release/* --verify-tag --prerelease --title "nightwire $RELEASE_TAG" --notes-file release-notes.md
+      - name: publish tagged release with gh
+        run: |
+          flags=(--verify-tag --title "nightwire $RELEASE_TAG" --notes-file release-notes.md)
+          if [[ "$RELEASE_TAG" == *-* ]]; then
+            flags+=(--prerelease)
+          else
+            flags+=(--latest)
+          fi
+          gh release create "$RELEASE_TAG" release/* "${flags[@]}"
       - name: verify published assets
         run: gh release view "$RELEASE_TAG" --json url,tagName,isPrerelease,assets

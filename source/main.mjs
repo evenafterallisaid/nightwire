@@ -86,8 +86,9 @@ function applyNativeAppearance() {
   const requested = choice === 'system' ? 'system' : choice === 'paper' ? 'light' : 'dark';
   if (nativeTheme.themeSource !== requested) nativeTheme.themeSource = requested;
   const name =
-    choice === 'system' ? (nativeTheme.shouldUseDarkColors ? 'midnight' : 'paper') : choice;
+    choice === 'system' ? (nativeTheme.shouldUseDarkColors ? 'amoled' : 'paper') : choice;
   const colors = {
+    amoled: ['#000000', '#080b0c'],
     midnight: ['#152a3a', '#102131'],
     paper: ['#eef2f7', '#dde5ef'],
     ember: ['#332c32', '#28232b'],
@@ -98,7 +99,9 @@ function applyNativeAppearance() {
     rose: ['#3b2e36', '#2d242d'],
   }[name];
   if (window && !window.isDestroyed()) {
-    window.setBackgroundColor(colors[0]);
+    const glass = preferences.value.surfaceStyle === 'glass';
+    window.setBackgroundColor(glass && process.platform === 'darwin' ? '#00000000' : colors[0]);
+    if (process.platform === 'darwin') window.setVibrancy(glass ? 'under-window' : null);
     if (process.platform === 'win32')
       window.setTitleBarOverlay({
         color: colors[1],
@@ -253,11 +256,13 @@ app
       ...(process.platform === 'win32'
         ? { titleBarOverlay: { color: '#102131', symbolColor: '#c9d7e8', height: 42 } }
         : {}),
-      ...(process.platform === 'darwin' ? { trafficLightPosition: { x: 12, y: 14 } } : {}),
+      ...(process.platform === 'darwin'
+        ? { trafficLightPosition: { x: 12, y: 14 }, visualEffectState: 'followWindow' }
+        : {}),
       minWidth: 900,
       minHeight: 620,
       title: 'nightwire',
-      backgroundColor: '#152a3a',
+      backgroundColor: '#000000',
       icon: join(source, 'assets', 'icon.png'),
       autoHideMenuBar: true,
       webPreferences: {
