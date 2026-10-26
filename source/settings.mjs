@@ -6,6 +6,7 @@ export const DEFAULT_SETTINGS = Object.freeze({
   chartSeconds: 60,
   dnsProvider: 'cloudflare',
   tlsMin: '1.2',
+  encryptedHello: 'off',
   mtu: 1400,
   ipPreference: 'ipv4',
   stack: 'mixed',
@@ -16,6 +17,7 @@ export const DEFAULT_SETTINGS = Object.freeze({
 export const CONNECTION_SETTINGS = [
   'dnsProvider',
   'tlsMin',
+  'encryptedHello',
   'mtu',
   'ipPreference',
   'stack',
@@ -29,6 +31,7 @@ const choices = {
   chartSeconds: [30, 60, 300],
   dnsProvider: ['cloudflare', 'quad9', 'google'],
   tlsMin: ['1.2', '1.3'],
+  encryptedHello: ['off', 'required'],
   mtu: [1280, 1400, 1500],
   ipPreference: ['ipv4', 'ipv6', 'auto'],
   stack: ['mixed', 'gvisor', 'system'],

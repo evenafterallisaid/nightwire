@@ -68,6 +68,7 @@ $('reset-settings').onclick = () =>
     chartSeconds: 60,
     dnsProvider: 'cloudflare',
     tlsMin: '1.2',
+    encryptedHello: 'off',
     mtu: 1400,
     ipPreference: 'ipv4',
     stack: 'mixed',
@@ -239,7 +240,9 @@ function render(next) {
   $('detail-tls').textContent = profile
     ? profile.tls === false
       ? 'local test'
-      : (state.settings?.tlsMin || '1.2') + '+'
+      : state.settings?.encryptedHello === 'required'
+        ? '1.3 · ech required'
+        : (state.settings?.tlsMin || '1.2') + '+'
     : '—';
   $('detail-ip-family').textContent =
     state.ipFamily === 'dual' ? 'ipv4 + ipv6' : state.ipFamily === 'ipv4' ? 'ipv4' : 'automatic';

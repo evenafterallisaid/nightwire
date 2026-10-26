@@ -261,6 +261,16 @@
               </div>
               <div class="settings-row">
                 <div>
+                  <label for="setting-encryptedHello">encrypted clienthello</label
+                  ><small>protect the server name. requires server support and tls 1.3.</small>
+                </div>
+                <select id="setting-encryptedHello" data-setting="encryptedHello" data-connection>
+                  <option value="off">off</option>
+                  <option value="required">required · no plain-name fallback</option>
+                </select>
+              </div>
+              <div class="settings-row">
+                <div>
                   <label for="setting-dnsProvider">encrypted dns provider</label
                   ><small>dns over https, through the gateway.</small>
                 </div>

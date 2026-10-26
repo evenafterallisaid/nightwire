@@ -28,6 +28,8 @@ the desktop workspace has connection, traffic, and settings views, native window
 
 [settings explained](docs/settings.md) covers verified tls requirements, encrypted dns providers, address selection, timeouts, mtu, network stacks, and udp compatibility. connection changes apply on the next connection. there is a reset-defaults button for the experiments that needed less coffee.
 
+encrypted clienthello can be required for a compatible gateway. it uses tls 1.3, preserves certificate verification, and stops if encrypted negotiation fails. the gateway must publish an ech key. this option is off by default; it cannot guarantee access on every filtered network.
+
 ## what the checks actually say
 
 - web: a verified https request through the gateway reaches discord's website.

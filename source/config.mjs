@@ -131,6 +131,8 @@ export function clientConfig(
 ) {
   const p = normalizeProfile(value),
     preferences = normalizeSettings(settings);
+  const encryptedHello = preferences.encryptedHello === 'required';
+  if (encryptedHello && !p.tls) throw Error('encrypted clienthello requires tls.');
   const filterIpv6 = ipv6 === false || preferences.destinationFamily === 'ipv4';
   if (!['proxy', 'tun'].includes(mode)) throw Error('invalid connection mode.');
   if (!Number.isInteger(port) || port < 1024 || port > 65535)
@@ -150,7 +152,14 @@ export function clientConfig(
     packet_encoding: preferences.udpEncoding,
     connect_timeout: preferences.connectTimeout + 's',
     ...(p.tls
-      ? { tls: { enabled: true, server_name: p.serverName, min_version: preferences.tlsMin } }
+      ? {
+          tls: {
+            enabled: true,
+            server_name: p.serverName,
+            min_version: encryptedHello ? '1.3' : preferences.tlsMin,
+            ...(encryptedHello ? { ech: { enabled: true } } : {}),
+          },
+        }
       : {}),
     ...(p.transport === 'ws'
       ? { transport: { type: 'ws', path: p.path, headers: { Host: p.serverName } } }
@@ -182,11 +191,26 @@ export function clientConfig(
       servers: [
         { type: 'local', tag: 'bootstrap' },
         resolver('remote', 'proxy', preferences.dnsProvider),
+        ...(encryptedHello ? [resolver('ech-bootstrap', undefined, preferences.dnsProvider)] : []),
       ],
       final: 'remote',
-      ...(filterIpv6
-        ? { rules: [{ query_type: ['AAAA', 'HTTPS'], action: 'predefined', rcode: 'NOERROR' }] }
-        : {}),
+      rules: [
+        // the endpoint's ech key must be fetched before the proxy exists.
+        // keep this exception ahead of the ipv4-only https-hint suppression.
+        ...(encryptedHello
+          ? [
+              {
+                domain: [p.serverName],
+                query_type: ['HTTPS'],
+                action: 'route',
+                server: 'ech-bootstrap',
+              },
+            ]
+          : []),
+        ...(filterIpv6
+          ? [{ query_type: ['AAAA', 'HTTPS'], action: 'predefined', rcode: 'NOERROR' }]
+          : []),
+      ],
       strategy: filterIpv6
         ? 'ipv4_only'
         : preferences.ipPreference === 'ipv6'
