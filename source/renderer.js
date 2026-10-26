@@ -59,6 +59,7 @@ function view(name) {
   $('page-title').textContent = name;
   $('settings-dialog').hidden = name !== 'settings';
   $('connection-workspace').hidden = name === 'settings';
+  if (changed) document.querySelector('.view-content').scrollTop = 0;
   if (changed && !reducedMotion.matches)
     (name === 'settings' ? $('settings-dialog') : $('connection-workspace')).animate(
       [

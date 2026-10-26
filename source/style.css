@@ -735,11 +735,17 @@ h1 {
   stroke-width: 1;
 }
 .chart-time {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   font-size: 9px;
   color: var(--subtle);
   margin-top: 8px;
+}
+.chart-time > :nth-child(2) {
+  text-align: center;
+}
+.chart-time > :last-child {
+  text-align: right;
 }
 .traffic-tooltip {
   position: absolute;
